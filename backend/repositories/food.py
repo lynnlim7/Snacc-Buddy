@@ -1,0 +1,80 @@
+import uuid
+from datetime import date
+
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from models.food_log import FoodLog
+from schemas.food import FoodLogCreate, FoodLogResponse
+
+
+class FoodRepository:
+    def __init__(self, db: AsyncSession) -> None:
+        self.db = db
+
+    async def create(self, data: FoodLogCreate) -> FoodLogResponse:
+        a = data.analysis
+        log = FoodLog(
+            user_id=data.user_id,
+            food_name=a.food_name,
+            ingredients=[i.model_dump() for i in a.ingredients],
+            serving_size=a.serving_size,
+            origin=a.origin,
+            calories=a.calories,
+            protein_g=a.macros.protein_g,
+            carbs_g=a.macros.carbs_g,
+            fat_g=a.macros.fat_g,
+            confidence=a.confidence,
+            notes=a.notes,
+            raw_response=a.model_dump(),
+            image_url=data.image_url,
+        )
+        self.db.add(log)
+        await self.db.commit()
+        await self.db.refresh(log)
+        return FoodLogResponse.model_validate(log)
+
+    async def get_by_user(
+        self, user_id: str, limit: int = 20, offset: int = 0
+    ) -> tuple[list[FoodLogResponse], int]:
+        count_q = select(func.count()).select_from(FoodLog).where(FoodLog.user_id == user_id)
+        total = (await self.db.execute(count_q)).scalar_one()
+
+        q = (
+            select(FoodLog)
+            .where(FoodLog.user_id == user_id)
+            .order_by(FoodLog.created_at.desc())
+            .limit(limit)
+            .offset(offset)
+        )
+        rows = (await self.db.execute(q)).scalars().all()
+        return [FoodLogResponse.model_validate(r) for r in rows], total
+
+    async def get_by_id(self, log_id: str, user_id: str) -> FoodLogResponse | None:
+        q = select(FoodLog).where(
+            FoodLog.id == uuid.UUID(log_id),
+            FoodLog.user_id == user_id,
+        )
+        row = (await self.db.execute(q)).scalar_one_or_none()
+        return FoodLogResponse.model_validate(row) if row else None
+
+    async def get_daily_summary(self, user_id: str, target_date: date) -> dict:
+        q = select(
+            func.coalesce(func.sum(FoodLog.calories), 0).label("total_calories"),
+            func.coalesce(func.sum(FoodLog.protein_g), 0.0).label("total_protein"),
+            func.coalesce(func.sum(FoodLog.carbs_g), 0.0).label("total_carbs"),
+            func.coalesce(func.sum(FoodLog.fat_g), 0.0).label("total_fat"),
+            func.count().label("meal_count"),
+        ).where(
+            FoodLog.user_id == user_id,
+            func.date(FoodLog.created_at) == target_date,
+        )
+        result = (await self.db.execute(q)).one()
+        return {
+            "date": target_date.isoformat(),
+            "total_calories": result.total_calories,
+            "total_protein_g": result.total_protein,
+            "total_carbs_g": result.total_carbs,
+            "total_fat_g": result.total_fat,
+            "meal_count": result.meal_count,
+        }
