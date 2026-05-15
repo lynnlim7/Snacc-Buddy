@@ -1,5 +1,5 @@
-from ai.gemini import gemini_service
-from repositories.food import FoodRepository
+from backend.app.ai.gemini import gemini_service
+from backend.app.repositories.food import FoodRepository
 from schemas.food import FoodLogCreate, FoodLogResponse
 
 

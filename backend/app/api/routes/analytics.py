@@ -3,8 +3,8 @@ from datetime import date, timedelta
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.database import get_db
-from repositories.food import FoodRepository
+from backend.app.core.database import get_db
+from backend.app.repositories.food import FoodRepository
 
 router = APIRouter()
 

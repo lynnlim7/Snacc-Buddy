@@ -4,7 +4,7 @@ from datetime import date
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from models.food_log import FoodLog
+from backend.app.models.food_log import FoodLog
 from schemas.food import FoodLogCreate, FoodLogResponse
 
 

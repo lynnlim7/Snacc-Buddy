@@ -5,7 +5,7 @@ from sqlalchemy import DateTime, Float, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
-from core.database import Base
+from backend.app.core.database import Base
 
 
 class FoodLog(Base):
