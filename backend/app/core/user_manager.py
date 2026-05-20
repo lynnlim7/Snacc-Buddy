@@ -6,8 +6,8 @@ from fastapi_users import BaseUserManager, UUIDIDMixim
 from fastapi_users.db import SQLAlchemyUserDatabase
 from fastapi_users.ext.asycio import AsyncSession
 
-from backend.app.core.database import get_db
-from backend.app.models.user import User
+from app.core.database import get_db
+from app.models.user import User
 
 class UserManager(UUIDIDMixim, BaseUserManager[User, uuid.UUID]):
     async def on_after_register(self, user, request: Optional[Request]=None):

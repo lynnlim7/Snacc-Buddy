@@ -4,8 +4,8 @@ import json
 import google.generativeai as genai
 from PIL import Image
 
-from core.config import settings
-from schemas.food import GeminiAnalysis
+from app.core.config import settings
+from app.schemas.food import GeminiAnalysis
 
 _ANALYSIS_PROMPT = """Analyze this food image and return nutritional information as JSON.
 

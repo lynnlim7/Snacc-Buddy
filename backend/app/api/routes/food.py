@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.core.database import get_db
-from backend.app.repositories.food import FoodRepository
-from schemas.food import FoodLogList, FoodLogResponse
-from backend.app.services.food import FoodService
+from app.core.database import get_db
+from app.repositories.food import FoodRepository
+from app.schemas.food import FoodLogList, FoodLogResponse
+from app.services.food import FoodService
 
 router = APIRouter()
 

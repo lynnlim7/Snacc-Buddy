@@ -1,12 +1,12 @@
 from contextlib import asynccontextmanager
 
-from backend.app.api.routes import food
+from app.api.routes import food
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from backend.app.api.routes import analytics
-from core.config import settings
-from backend.app.core.database import init_db
+from app.api.routes import analytics
+from app.core.config import settings
+from app.core.database import init_db
 
 
 @asynccontextmanager

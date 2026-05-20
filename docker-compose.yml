@@ -15,5 +15,35 @@ services:
       timeout: 5s
       retries: 5
 
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/snacc_buddy
+      CORS_ORIGINS: '["http://localhost:8081","exp://localhost:8081","exp://192.168.1.12:8081","http://192.168.1.12:8081"]'
+    env_file:
+      - ./backend/.env
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "8081:8081"
+    environment:
+      REACT_NATIVE_PACKAGER_HOSTNAME: "192.168.1.12"
+      EXPO_PUBLIC_API_URL: "http://192.168.1.12:8000"
+    depends_on:
+      - api
+    stdin_open: true
+    tty: true
+
 volumes:
   postgres_data:
