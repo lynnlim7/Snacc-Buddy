@@ -1,5 +1,6 @@
 import { StyleSheet, Text, View } from "react-native";
 import { DailySummary } from "../types/food";
+import { clayCard, colors, fonts } from "../constants/theme";
 
 interface Props {
   summary: DailySummary;
@@ -9,68 +10,81 @@ interface Props {
 export function NutritionSummary({ summary, compact = false }: Props) {
   return (
     <View style={[styles.card, compact && styles.compact]}>
-      <View style={styles.row}>
-        <StatBlock
-          label="Calories"
-          value={summary.total_calories}
-          unit="kcal"
-          highlight
-          compact={compact}
-        />
-        <StatBlock label="Protein" value={Math.round(summary.total_protein_g)} unit="g" compact={compact} />
-        <StatBlock label="Carbs" value={Math.round(summary.total_carbs_g)} unit="g" compact={compact} />
-        <StatBlock label="Fat" value={Math.round(summary.total_fat_g)} unit="g" compact={compact} />
+      {/* Calorie hero row */}
+      <View style={styles.topRow}>
+        <View>
+          <Text style={styles.calLabel}>Calories today</Text>
+          <Text style={styles.calValue}>{summary.total_calories}</Text>
+          <Text style={styles.calUnit}>kcal</Text>
+        </View>
+        {!compact && (
+          <View style={styles.mealBadge}>
+            <Text style={styles.mealBadgeText}>{summary.meal_count}</Text>
+            <Text style={styles.mealBadgeLabel}>meal{summary.meal_count !== 1 ? "s" : ""}</Text>
+          </View>
+        )}
       </View>
-      {!compact && (
-        <Text style={styles.meals}>{summary.meal_count} meal{summary.meal_count !== 1 ? "s" : ""} logged</Text>
-      )}
+
+      {/* Macro chips */}
+      <View style={styles.macroRow}>
+        <MacroChip label="Protein" value={Math.round(summary.total_protein_g)} unit="g" bg={colors.mint}     border={colors.mintBorder}     compact={compact} />
+        <MacroChip label="Carbs"   value={Math.round(summary.total_carbs_g)}   unit="g" bg={colors.lavender} border={colors.lavenderBorder} compact={compact} />
+        <MacroChip label="Fat"     value={Math.round(summary.total_fat_g)}     unit="g" bg={colors.peach}    border={colors.peachBorder}    compact={compact} />
+      </View>
     </View>
   );
 }
 
-function StatBlock({
-  label,
-  value,
-  unit,
-  highlight,
-  compact,
+function MacroChip({
+  label, value, unit, bg, border, compact,
 }: {
-  label: string;
-  value: number;
-  unit: string;
-  highlight?: boolean;
-  compact?: boolean;
+  label: string; value: number; unit: string;
+  bg: string; border: string; compact: boolean;
 }) {
   return (
-    <View style={styles.stat}>
-      <Text style={[styles.value, highlight && styles.highlightValue, compact && styles.compactValue]}>
-        {value}
-      </Text>
-      <Text style={styles.unit}>{unit}</Text>
-      <Text style={styles.label}>{label}</Text>
+    <View style={[styles.chip, { backgroundColor: bg, borderColor: border }, compact && styles.chipCompact]}>
+      <Text style={styles.chipValue}>{value}<Text style={styles.chipUnit}>{unit}</Text></Text>
+      <Text style={styles.chipLabel}>{label}</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    padding: 16,
+    ...clayCard("pink"),
     marginHorizontal: 16,
     marginBottom: 16,
-    shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    padding: 16,
   },
   compact: { marginHorizontal: 0, padding: 12 },
-  row: { flexDirection: "row", justifyContent: "space-around" },
-  stat: { alignItems: "center" },
-  value: { fontSize: 22, fontWeight: "700", color: "#111827" },
-  compactValue: { fontSize: 18 },
-  highlightValue: { color: "#16a34a" },
-  unit: { fontSize: 11, color: "#6b7280" },
-  label: { fontSize: 11, color: "#9ca3af", marginTop: 2 },
-  meals: { textAlign: "center", color: "#6b7280", fontSize: 13, marginTop: 10 },
+
+  topRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14 },
+  calLabel: { fontFamily: fonts.body600, fontSize: 12, color: colors.textMuted, marginBottom: 2 },
+  calValue: { fontFamily: fonts.heading800, fontSize: 40, color: colors.pink400, lineHeight: 44 },
+  calUnit:  { fontFamily: fonts.body400,   fontSize: 13, color: colors.textMuted },
+
+  mealBadge: {
+    backgroundColor: colors.pink100,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: colors.pink200,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    alignItems: "center",
+  },
+  mealBadgeText:  { fontFamily: fonts.heading700, fontSize: 22, color: colors.pink500 },
+  mealBadgeLabel: { fontFamily: fonts.body400,    fontSize: 11, color: colors.textMuted },
+
+  macroRow: { flexDirection: "row", gap: 10 },
+  chip: {
+    flex: 1,
+    borderRadius: 14,
+    borderWidth: 2,
+    padding: 10,
+    alignItems: "center",
+  },
+  chipCompact: { padding: 8 },
+  chipValue: { fontFamily: fonts.heading700, fontSize: 17, color: colors.textDark },
+  chipUnit:  { fontFamily: fonts.body400,    fontSize: 11, color: colors.textMid },
+  chipLabel: { fontFamily: fonts.body400,    fontSize: 11, color: colors.textMid, marginTop: 2 },
 });

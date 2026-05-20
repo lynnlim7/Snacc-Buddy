@@ -10,6 +10,8 @@
     "lint": "expo lint"
   },
   "dependencies": {
+    "@expo-google-fonts/baloo-2": "^0.4.2",
+    "@expo-google-fonts/nunito": "^0.4.2",
     "@expo/metro-runtime": "~4.0.1",
     "@expo/vector-icons": "~14.0.4",
     "axios": "^1.7.9",
@@ -20,6 +22,7 @@
     "expo-image-picker": "~16.0.0",
     "expo-router": "~4.0.0",
     "expo-secure-store": "~14.0.1",
+    "expo-splash-screen": "~0.29.24",
     "expo-status-bar": "~2.0.0",
     "react": "18.3.1",
     "react-dom": "18.3.1",
