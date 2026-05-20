@@ -30,14 +30,24 @@ import {
   todayKey,
   type MealEntry,
 } from "../../stores/diaryStore";
+import { useOnboardingStore } from "../../stores/onboardingStore";
 import { colors, fonts, spacing, radius } from "../../constants/theme";
 
 // ─── Constants ────────────────────────────────────────────────
 
 const { height: SCREEN_H } = Dimensions.get("window");
 const LINE_SPACING = 38;
-const HEADER_OFFSET = 170; // ruled lines start below the header area
+const HEADER_OFFSET = 220; // ruled lines start below the header area
 const NUM_LINES = Math.ceil((SCREEN_H - HEADER_OFFSET) / LINE_SPACING) + 4;
+const CALORIE_GOAL = 2000; // TODO: pull from user profile
+
+function getGreeting(): string {
+  const h = new Date().getHours();
+  if (h < 12) return "Good morning!";
+  if (h < 17) return "Good afternoon!";
+  if (h < 21) return "Good evening!";
+  return "Good night!";
+}
 const DOT_LEADER = ". . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .";
 
 /** Stable empty array — avoids creating a new reference on every render when
@@ -154,6 +164,35 @@ function EmptyDiary() {
   );
 }
 
+// ─── Calorie card ─────────────────────────────────────────────
+
+function CalorieCard({ total, goal }: { total: number; goal: number }) {
+  const pct     = goal > 0 ? Math.min(1, total / goal) : 0;
+  const reached = Math.round(pct * 100);
+  // Keep fill width at least 3% so the pill always shows when non-zero
+  const fillPct = total > 0 ? Math.max(3, reached) : 0;
+
+  return (
+    <View style={styles.calorieCard}>
+      <Text style={styles.calCardLabel}>Today's calories</Text>
+      <Text style={styles.calCardValue}>
+        {total > 0 ? total.toLocaleString() : "0"}
+      </Text>
+
+      {/* Progress bar */}
+      <View style={styles.progressTrack}>
+        {fillPct > 0 && (
+          <View style={[styles.progressFill, { width: `${fillPct}%` as any }]} />
+        )}
+      </View>
+
+      <Text style={styles.calCardGoal}>
+        Goal: {goal.toLocaleString()} kcal{"  ·  "}{reached}% reached
+      </Text>
+    </View>
+  );
+}
+
 // ─── Main screen ─────────────────────────────────────────────
 
 export default function DiaryScreen() {
@@ -161,12 +200,17 @@ export default function DiaryScreen() {
   const [modalVisible, setModalVisible] = useState(false);
 
   // Reactive store selectors
-  const meals   = useDiaryStore((s) => s.mealsByDate[today] ?? EMPTY_MEALS);
-  const streak  = useDiaryStore((s) => s.streak);
-  const addMeal        = useDiaryStore((s) => s.addMeal);
+  const meals        = useDiaryStore((s) => s.mealsByDate[today] ?? EMPTY_MEALS);
+  const streak       = useDiaryStore((s) => s.streak);
+  const addMeal      = useDiaryStore((s) => s.addMeal);
   const addPhotoToMeal = useDiaryStore((s) => s.addPhotoToMeal);
+  const userName     = useOnboardingStore((s) => s.name);
 
   const totalCalories = meals.reduce((sum, m) => sum + m.totalCalories, 0);
+
+  const greeting    = getGreeting();
+  const displayName = userName.trim() || "My";
+  const initial     = displayName !== "My" ? displayName[0].toUpperCase() : "?";
 
   // Format date: "Tuesday, 20 May"
   const dateDisplay = new Date().toLocaleDateString("en-GB", {
@@ -198,22 +242,33 @@ export default function DiaryScreen() {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          {/* ── Header: date + streak ── */}
+          {/* ── Header: greeting + streak + avatar ── */}
           <View style={styles.headerRow}>
-            <Text style={styles.dateText}>{dateDisplay}</Text>
+            {/* Left: greeting + diary title */}
+            <View style={styles.headerLeft}>
+              <Text style={styles.greetingText}>{greeting}</Text>
+              <Text style={styles.diaryTitle}>
+                {displayName === "My" ? "My Diary" : `${displayName}'s Diary`}
+              </Text>
+            </View>
 
-            <View style={styles.streakBadge}>
-              <Ionicons name="flame" size={17} color="#E8724A" />
-              <Text style={styles.streakCount}>{streak}</Text>
+            {/* Right: streak badge + user avatar */}
+            <View style={styles.headerRight}>
+              <View style={styles.streakBadge}>
+                <Ionicons name="flame" size={16} color="#E8724A" />
+                <Text style={styles.streakCount}>{streak}</Text>
+              </View>
+              <View style={styles.avatar}>
+                <Text style={styles.avatarText}>{initial}</Text>
+              </View>
             </View>
           </View>
 
-          {/* ── Total calories ── */}
-          <Text style={styles.totalCalLabel}>Total Calories Today</Text>
-          <Text style={styles.totalCalValue} adjustsFontSizeToFit numberOfLines={1}>
-            {totalCalories > 0 ? totalCalories.toLocaleString() : "—"}
-            <Text style={styles.kcalText}>kcal</Text>
-          </Text>
+          {/* ── Date ── */}
+          <Text style={styles.dateText}>{dateDisplay}</Text>
+
+          {/* ── Calorie card ── */}
+          <CalorieCard total={totalCalories} goal={CALORIE_GOAL} />
 
           {/* ── Meals section ── */}
           <Text style={styles.mealsHeader}>Meals</Text>
@@ -276,13 +331,26 @@ const styles = StyleSheet.create({
   headerRow: {
     flexDirection:  "row",
     justifyContent: "space-between",
-    alignItems:     "center",
-    marginBottom:   spacing.md,
+    alignItems:     "flex-start",
+    marginBottom:   spacing.sm,
   },
-  dateText: {
-    fontFamily: fonts.heading600,
-    fontSize:   17,
+  headerLeft: {
+    gap: 2,
+  },
+  greetingText: {
+    fontFamily: fonts.body400,
+    fontSize:   14,
+    color:      colors.textMuted,
+  },
+  diaryTitle: {
+    fontFamily: fonts.body700,
+    fontSize:   18,
     color:      colors.text,
+  },
+  headerRight: {
+    flexDirection: "row",
+    alignItems:    "center",
+    gap:           spacing.sm,
   },
   streakBadge: {
     flexDirection:   "row",
@@ -290,36 +358,88 @@ const styles = StyleSheet.create({
     gap:             4,
     backgroundColor: colors.bgSecondary,
     borderRadius:    radius.pill,
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     paddingVertical:   5,
     borderWidth:     1.5,
     borderColor:     colors.border,
   },
   streakCount: {
     fontFamily: fonts.body700,
-    fontSize:   14,
+    fontSize:   13,
+    color:      colors.text,
+  },
+  avatar: {
+    width:           36,
+    height:          36,
+    borderRadius:    18,
+    backgroundColor: colors.softPink,
+    borderWidth:     1.5,
+    borderColor:     colors.softPinkBorder,
+    alignItems:      "center",
+    justifyContent:  "center",
+  },
+  avatarText: {
+    fontFamily: fonts.body700,
+    fontSize:   15,
     color:      colors.text,
   },
 
-  // ── Total calories ──
-  totalCalLabel: {
-    fontFamily: fonts.heading400,
-    fontSize:   20,
-    color:      colors.textMuted,
-    letterSpacing: 0.3,
+  // ── Date ──
+  dateText: {
+    fontFamily: fonts.heading600,
+    fontSize:   28,
+    color:      colors.text,
+    marginBottom: spacing.md,
   },
-  totalCalValue: {
-    fontFamily:  fonts.heading700,
-    fontSize:    48,
-    color:       colors.text,
-    lineHeight:  52,
+
+  // ── Calorie card ──
+  calorieCard: {
+    backgroundColor: colors.softPink,
+    borderRadius:    radius.lg,
+    borderWidth:     1.5,
+    borderColor:     colors.softPinkBorder,
+    padding:         spacing.md,
+    gap:             spacing.sm,
+    marginBottom:    spacing.sm,
+    ...Platform.select({
+      ios: {
+        shadowColor:   colors.softPinkBorder,
+        shadowOffset:  { width: 0, height: 3 },
+        shadowOpacity: 0.3,
+        shadowRadius:  0,
+      },
+      android: { elevation: 3 },
+    }),
+  },
+  calCardLabel: {
+    fontFamily: fonts.body600,
+    fontSize:   13,
+    color:      colors.text,
+    opacity:    0.7,
+  },
+  calCardValue: {
+    fontFamily:   fonts.heading700,
+    fontSize:     52,
+    color:        colors.text,
+    lineHeight:   56,
     letterSpacing: -1,
-    marginTop:   2,
   },
-  kcalText: {
-    fontFamily: fonts.heading400,
-    fontSize:   16,
-    color:      colors.textLight,
+  progressTrack: {
+    height:          10,
+    borderRadius:    5,
+    backgroundColor: "rgba(74, 64, 54, 0.12)",
+    overflow:        "hidden",
+  },
+  progressFill: {
+    height:          "100%",
+    borderRadius:    5,
+    backgroundColor: colors.softPinkBorder,
+  },
+  calCardGoal: {
+    fontFamily: fonts.body400,
+    fontSize:   12,
+    color:      colors.text,
+    opacity:    0.6,
   },
 
   // ── Meals section ──
@@ -415,14 +535,14 @@ const styles = StyleSheet.create({
     width:           58,
     height:          58,
     borderRadius:    29,
-    backgroundColor: colors.accent,
+    backgroundColor: colors.softPink,
     borderWidth:     2,
-    borderColor:     colors.accentBorder,
+    borderColor:     colors.softPinkBorder,
     alignItems:      "center",
     justifyContent:  "center",
     ...Platform.select({
       ios: {
-        shadowColor:   colors.accentBorder,
+        shadowColor:   colors.softPinkBorder,
         shadowOffset:  { width: 0, height: 4 },
         shadowOpacity: 0.45,
         shadowRadius:  0,
