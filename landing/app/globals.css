@@ -1,0 +1,144 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-pink-50 text-clay-text font-body;
+  }
+
+  * {
+    @apply antialiased;
+  }
+}
+
+@layer components {
+  /* Clay card base */
+  .clay-card {
+    @apply bg-white rounded-clay border-2 border-pink-200;
+    box-shadow: 6px 6px 0px #FFB3C6;
+  }
+
+  .clay-card-mint {
+    @apply bg-white rounded-clay border-2;
+    border-color: #7ECFB0;
+    box-shadow: 6px 6px 0px #7ECFB0;
+  }
+
+  .clay-card-lavender {
+    @apply bg-white rounded-clay border-2;
+    border-color: #B89DD0;
+    box-shadow: 6px 6px 0px #B89DD0;
+  }
+
+  .clay-card-peach {
+    @apply bg-white rounded-clay border-2;
+    border-color: #FFBA7A;
+    box-shadow: 6px 6px 0px #FFBA7A;
+  }
+
+  .clay-card-lemon {
+    @apply bg-white rounded-clay border-2;
+    border-color: #FFD97A;
+    box-shadow: 6px 6px 0px #FFD97A;
+  }
+
+  /* Primary CTA button */
+  .btn-clay {
+    @apply inline-flex items-center gap-2 px-7 py-3.5 rounded-[14px] font-heading font-semibold text-white text-lg cursor-pointer select-none;
+    background: #FF85A1;
+    border: 2.5px solid #D4506A;
+    box-shadow: 4px 4px 0px #D4506A;
+    transition: all 200ms ease-out;
+  }
+
+  .btn-clay:hover {
+    transform: translate(2px, 2px);
+    box-shadow: 2px 2px 0px #D4506A;
+  }
+
+  .btn-clay:active {
+    transform: translate(4px, 4px);
+    box-shadow: none;
+  }
+
+  /* Secondary outline button */
+  .btn-clay-outline {
+    @apply inline-flex items-center gap-2 px-7 py-3.5 rounded-[14px] font-heading font-semibold text-lg cursor-pointer select-none;
+    color: #FF85A1;
+    background: white;
+    border: 2.5px solid #FFB3C6;
+    box-shadow: 4px 4px 0px #FFB3C6;
+    transition: all 200ms ease-out;
+  }
+
+  .btn-clay-outline:hover {
+    transform: translate(2px, 2px);
+    box-shadow: 2px 2px 0px #FFB3C6;
+  }
+
+  .btn-clay-outline:active {
+    transform: translate(4px, 4px);
+    box-shadow: none;
+  }
+
+  /* White CTA for use on pink backgrounds */
+  .btn-clay-white {
+    @apply inline-flex items-center gap-3 px-7 py-4 rounded-2xl font-heading font-bold text-lg cursor-pointer select-none;
+    color: #FF85A1;
+    background: white;
+    border: 2.5px solid #D4506A;
+    box-shadow: 4px 4px 0px #D4506A;
+    transition: all 200ms ease-out;
+  }
+
+  .btn-clay-white:hover {
+    transform: translate(2px, 2px);
+    box-shadow: 2px 2px 0px #D4506A;
+  }
+
+  .btn-clay-white:active {
+    transform: translate(4px, 4px);
+    box-shadow: none;
+  }
+
+  /* Dark CTA variant */
+  .btn-clay-dark {
+    @apply inline-flex items-center gap-2 px-7 py-3.5 rounded-[14px] font-heading font-semibold text-white text-lg cursor-pointer select-none;
+    background: #2D1B2E;
+    border: 2.5px solid #1a0f1b;
+    box-shadow: 4px 4px 0px #1a0f1b;
+    transition: all 200ms ease-out;
+  }
+
+  .btn-clay-dark:hover {
+    transform: translate(2px, 2px);
+    box-shadow: 2px 2px 0px #1a0f1b;
+  }
+
+  .btn-clay-dark:active {
+    transform: translate(4px, 4px);
+    box-shadow: none;
+  }
+
+  /* Blob decoration */
+  .blob {
+    @apply absolute rounded-full opacity-60 pointer-events-none;
+    filter: blur(0px);
+  }
+}
+
+@layer utilities {
+  @media (prefers-reduced-motion: reduce) {
+    .animate-float,
+    .animate-float-delay,
+    .animate-float-slow,
+    .animate-wiggle {
+      animation: none;
+    }
+  }
+}
