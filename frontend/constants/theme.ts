@@ -25,6 +25,10 @@ export const colors = {
   matchaBorder:   "#A8BC95", // Matcha border
   lightBrown:     "#C89B7B", // Light brown — neutral accents
 
+  // Pastel blue — onboarding selected state
+  pastelBlue:       "#B8D4E8", // Soft sky blue
+  pastelBlueBorder: "#8FBBDA", // Pastel blue border / shadow
+
   // Utility
   white:  "#FFFDF8",
   error:  "#D97B78", // Soft red — error states
@@ -141,12 +145,13 @@ export const inputStyle: ViewStyle = {
 };
 
 // ─── Option chip — selectable choice pill ─────────────────────
+// Selected state uses pastel blue (#B8D4E8) across all onboarding screens.
 export function optionChip(selected: boolean): ViewStyle {
   return {
-    backgroundColor: selected ? colors.accent : colors.bgSecondary,
+    backgroundColor: selected ? colors.pastelBlue : colors.bgSecondary,
     borderRadius: radius.pill,
     borderWidth: 2,
-    borderColor: selected ? colors.accentBorder : colors.border,
+    borderColor: selected ? colors.pastelBlueBorder : colors.border,
     paddingVertical: 12,
     paddingHorizontal: 20,
     alignItems: "center",
@@ -154,9 +159,9 @@ export function optionChip(selected: boolean): ViewStyle {
     marginBottom: spacing.sm,
     ...Platform.select({
       ios: {
-        shadowColor: selected ? colors.accentBorder : "#00000015",
+        shadowColor: selected ? colors.pastelBlueBorder : "#00000015",
         shadowOffset: { width: 0, height: selected ? 3 : 1 },
-        shadowOpacity: selected ? 0.5 : 0.1,
+        shadowOpacity: selected ? 0.4 : 0.1,
         shadowRadius: 0,
       },
       android: { elevation: selected ? 3 : 1 },

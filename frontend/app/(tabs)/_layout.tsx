@@ -39,15 +39,8 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: "Today",
+          title: "Diary",
           tabBarIcon: ({ focused }) => <TabIcon name="book-outline" focused={focused} />,
-        }}
-      />
-      <Tabs.Screen
-        name="camera"
-        options={{
-          title: "Log Food",
-          tabBarIcon: ({ focused }) => <TabIcon name="camera-outline" focused={focused} />,
         }}
       />
       <Tabs.Screen
@@ -56,6 +49,11 @@ export default function TabLayout() {
           title: "Progress",
           tabBarIcon: ({ focused }) => <TabIcon name="trending-up-outline" focused={focused} />,
         }}
+      />
+      {/* camera screen exists as a route but is NOT a tab — accessed via modal from diary */}
+      <Tabs.Screen
+        name="camera"
+        options={{ href: null }}
       />
     </Tabs>
   );

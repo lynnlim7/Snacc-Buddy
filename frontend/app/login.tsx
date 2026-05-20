@@ -28,16 +28,12 @@ export default function LoginScreen() {
   const [error, setError] = useState("");
 
   async function handleLogin() {
-    if (!email.trim() || !password.trim()) {
-      setError(microcopy.error);
-      return;
-    }
     setError("");
     setLoading(true);
     try {
-      // TODO: wire up to auth API
+      // TODO: wire up to auth API — skipping validation until backend is ready
       await new Promise((r) => setTimeout(r, 1200));
-      router.replace("/(tabs)");
+      router.replace("/(tabs)" as any);
     } catch {
       setError(microcopy.error);
     } finally {
