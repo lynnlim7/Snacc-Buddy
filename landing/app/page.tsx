@@ -57,14 +57,6 @@ function IconHeart({ className, style }: IconProps) {
   );
 }
 
-function IconStar({ className, style, filled }: IconProps & { filled?: boolean }) {
-  return (
-    <svg className={className} style={style} viewBox="0 0 24 24" fill={filled ? "currentColor" : "none"} stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-    </svg>
-  );
-}
-
 function IconCheck({ className, style }: IconProps) {
   return (
     <svg className={className} style={style} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -182,18 +174,6 @@ function PhoneMockup() {
   );
 }
 
-/* ─────────────────────── Stars component ─────────────────────── */
-
-function Stars({ count = 5 }: { count?: number }) {
-  return (
-    <div className="flex gap-0.5">
-      {Array.from({ length: 5 }).map((_, i) => (
-        <IconStar key={i} filled={i < count} className="w-4 h-4 text-yellow-400" />
-      ))}
-    </div>
-  );
-}
-
 /* ─────────────────────── Feature card ─────────────────────── */
 
 const FEATURES = [
@@ -262,7 +242,6 @@ export default function LandingPage() {
           <div className="hidden md:flex items-center gap-6 text-sm font-body font-semibold text-clay-mid">
             <a href="#how-it-works" className="hover:text-pink-400 transition-colors duration-200">How it works</a>
             <a href="#features" className="hover:text-pink-400 transition-colors duration-200">Features</a>
-            <a href="#reviews" className="hover:text-pink-400 transition-colors duration-200">Reviews</a>
           </div>
 
           <a href="#download" className="btn-clay text-sm py-2.5 px-5 text-base">
@@ -284,7 +263,7 @@ export default function LandingPage() {
             {/* Pill badge */}
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full mb-6 font-body text-sm font-semibold" style={{ background: "#FFE4EC", border: "2px solid #FFB3C6", color: "#D4506A" }}>
               <IconSparkles className="w-4 h-4" />
-              Powered by Gemini AI
+              Powered by AI
             </div>
 
             <h1 className="font-heading font-extrabold text-5xl lg:text-6xl xl:text-7xl text-clay-text leading-tight mb-6">
@@ -325,14 +304,6 @@ export default function LandingPage() {
                   </div>
                 ))}
               </div>
-              <div>
-                <div className="flex gap-0.5 mb-0.5">
-                  {[1, 2, 3, 4, 5].map((i) => (
-                    <IconStar key={i} filled className="w-3.5 h-3.5 text-yellow-400" />
-                  ))}
-                </div>
-                <p className="text-xs font-body text-clay-muted">Loved by 10,000+ snack trackers</p>
-              </div>
             </div>
           </div>
 
@@ -360,7 +331,7 @@ export default function LandingPage() {
                 step: "01",
                 icon: <IconCamera className="w-8 h-8 text-pink-400" />,
                 title: "Snap your meal",
-                body: "Open the app, point your camera at your food, and tap the button. That's it — no login needed.",
+                body: "Open the app, point your camera at your food, and tap the button.",
                 variant: "clay-card",
                 stepColor: "#FF85A1",
               },
@@ -424,107 +395,30 @@ export default function LandingPage() {
 
       {/* ── What's included ── */}
       <section className="py-20 px-4">
-        <div className="max-w-5xl mx-auto grid lg:grid-cols-2 gap-14 items-center">
-          {/* List */}
-          <div>
-            <p className="font-body font-semibold text-pink-400 mb-2 uppercase tracking-widest text-sm">Why Snacc Buddy?</p>
-            <h2 className="font-heading font-extrabold text-4xl text-clay-text mb-6">
-              Calorie tracking that actually feels good
-            </h2>
-            <p className="font-body text-clay-mid leading-relaxed mb-8">
-              We built Snacc Buddy because calorie apps felt like homework. We wanted something that felt like writing in a diary — personal, warm, and fun.
-            </p>
-            <ul className="space-y-4">
-              {[
-                "No manual food database searching",
-                "Works with any cuisine from any country",
-                "Handles homemade and restaurant meals",
-                "Private — your diary stays on your device",
-                "Completely free to download and use",
-              ].map((item) => (
-                <li key={item} className="flex items-start gap-3">
-                  <div className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: "#A8E6CF", border: "2px solid #7ECFB0" }}>
-                    <IconCheck className="w-3.5 h-3.5 text-green-700" />
-                  </div>
-                  <span className="font-body text-clay-mid text-sm leading-relaxed">{item}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Stats cards */}
-          <div className="grid grid-cols-2 gap-5">
+        <div className="max-w-2xl mx-auto text-center">
+          <p className="font-body font-semibold text-pink-400 mb-2 uppercase tracking-widest text-sm">Why Snacc Buddy?</p>
+          <h2 className="font-heading font-extrabold text-4xl text-clay-text mb-6">
+            Calorie tracking that actually feels good
+          </h2>
+          <p className="font-body text-clay-mid leading-relaxed mb-8">
+            We built Snacc Buddy because calorie apps felt like homework. We wanted something that felt like writing in a diary — personal, warm, and fun.
+          </p>
+          <ul className="space-y-4 text-left max-w-sm mx-auto">
             {[
-              { value: "10K+", label: "Active users", bg: "bg-pink-100", border: "#FFB3C6", shadow: "#FFB3C6" },
-              { value: "4.9", label: "App Store rating", bg: "bg-lemon", border: "#FFD97A", shadow: "#FFD97A" },
-              { value: "< 3s", label: "Analysis speed", bg: "bg-mint", border: "#7ECFB0", shadow: "#7ECFB0" },
-              { value: "50+", label: "Cuisines detected", bg: "bg-lavender", border: "#B89DD0", shadow: "#B89DD0" },
-            ].map(({ value, label, bg, border, shadow }) => (
-              <div
-                key={label}
-                className={`${bg} rounded-clay p-6 text-center`}
-                style={{ border: `2.5px solid ${border}`, boxShadow: `5px 5px 0px ${shadow}` }}
-              >
-                <p className="font-heading font-extrabold text-4xl text-clay-text mb-1">{value}</p>
-                <p className="font-body text-sm text-clay-mid">{label}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── Reviews ── */}
-      <section id="reviews" className="py-20 px-4 bg-pink-50">
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-14">
-            <p className="font-body font-semibold text-pink-400 mb-2 uppercase tracking-widest text-sm">Reviews</p>
-            <h2 className="font-heading font-extrabold text-4xl lg:text-5xl text-clay-text">
-              Snackers love it
-            </h2>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-7">
-            {[
-              {
-                name: "Sarah K.",
-                handle: "@sarahkfoods",
-                review: "I've tried every calorie app out there. Snacc Buddy is the first one I've actually stuck with. It feels like my diary, not a chore.",
-                avatar: "#FF85A1",
-                variant: "clay-card",
-                stars: 5,
-              },
-              {
-                name: "James L.",
-                handle: "@jlfit",
-                review: "The AI is scarily accurate. It identified my grandma's home-cooked curry and got the calories spot on. Blew my mind.",
-                avatar: "#A8E6CF",
-                variant: "clay-card-mint",
-                stars: 5,
-              },
-              {
-                name: "Mia T.",
-                handle: "@mia_eats",
-                review: "Love how colourful and fun it is. Other apps feel clinical, Snacc Buddy feels like journalling. Actually excited to log my food now!",
-                avatar: "#D4B8E0",
-                variant: "clay-card-lavender",
-                stars: 5,
-              },
-            ].map(({ name, handle, review, avatar, variant, stars }) => (
-              <div key={name} className={`${variant} p-6 flex flex-col gap-4`}>
-                <Stars count={stars} />
-                <p className="font-body text-clay-mid text-sm leading-relaxed flex-1">&ldquo;{review}&rdquo;</p>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full flex items-center justify-center font-heading font-bold text-white flex-shrink-0" style={{ background: avatar }}>
-                    {name[0]}
-                  </div>
-                  <div>
-                    <p className="font-heading font-semibold text-sm text-clay-text">{name}</p>
-                    <p className="font-body text-xs text-clay-muted">{handle}</p>
-                  </div>
+              "No manual food database searching",
+              "Works with any cuisine from any country",
+              "Handles homemade and restaurant meals",
+              "Private — your diary stays on your device",
+              "Completely free to download and use",
+            ].map((item) => (
+              <li key={item} className="flex items-start gap-3">
+                <div className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: "#A8E6CF", border: "2px solid #7ECFB0" }}>
+                  <IconCheck className="w-3.5 h-3.5 text-green-700" />
                 </div>
-              </div>
+                <span className="font-body text-clay-mid text-sm leading-relaxed">{item}</span>
+              </li>
             ))}
-          </div>
+          </ul>
         </div>
       </section>
 
@@ -544,7 +438,7 @@ export default function LandingPage() {
                 Start your food diary today
               </h2>
               <p className="font-body text-lg text-white opacity-90 mb-10 max-w-xl mx-auto leading-relaxed">
-                Free forever. No subscriptions. Just you, your snacks, and a little AI magic.
+                Just you, your snacks, and a little AI magic.
               </p>
 
               <div className="flex flex-wrap gap-4 justify-center">
