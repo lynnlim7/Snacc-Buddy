@@ -1,1 +1,0 @@
-self.__NEXT_FONT_MANIFEST="{\"pages\":{},\"app\":{\"/Users/Lynn/Documents/coding_workspace/Snacc-Buddy/landing/app/layout\":[\"static/media/a65324f02aa278dc-s.p.woff2\",\"static/media/ee40bb094c99a29a-s.p.woff2\"]},\"appUsingSizeAdjust\":true,\"pagesUsingSizeAdjust\":false}"
