@@ -1,25 +1,13 @@
 /**
- * Cover Screen — the very first thing a user sees.
- * Looks like the cover of a handwritten food journal.
+ * Cover Screen — journal cover, first thing a user sees.
  */
 import React from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Pressable,
-  Image,
-} from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { PaperBackground } from "../components/PaperBackground";
 import { PillowButton } from "../components/PillowButton";
-import { colors, fonts, spacing, radius } from "../constants/theme";
-
-// Decorative food emoji stand-ins — replace with hand-drawn PNG assets
-// by importing them and passing to <Image source={require('...')} />
-const FOOD_ITEMS = ["🍎", "🥑", "🍊", "🫐", "🥦", "🍋", "🍓", "🥕"];
+import { colors, fonts, spacing } from "../constants/theme";
 
 export default function CoverScreen() {
   const router = useRouter();
@@ -27,69 +15,28 @@ export default function CoverScreen() {
   return (
     <PaperBackground>
       <SafeAreaView style={styles.safe}>
-        {/* ── Top decorative band ── */}
-        <View style={styles.topBand}>
-          <Text style={styles.tagline}>my little food diary</Text>
-        </View>
 
-        {/* ── Journal title block ── */}
+        {/* ── Title block ── */}
         <View style={styles.titleBlock}>
-          {/* Decorative spine lines */}
-          <View style={styles.spineLines}>
-            {[0, 1, 2].map((i) => (
-              <View key={i} style={styles.spineLine} />
-            ))}
-          </View>
-
-          <Text style={styles.title}>Snacc</Text>
-          <Text style={styles.titleAccent}>Buddy</Text>
-
-          <Text style={styles.subtitle}>
-            a cozy place for{"\n"}your daily bites
-          </Text>
+          <Text style={styles.title}>Snacc Buddy</Text>
+          <Text style={styles.subtitle}>a cozy place for your daily bites</Text>
         </View>
 
-        {/* ── Food illustrations ── */}
-        <View style={styles.foodRing}>
-          {FOOD_ITEMS.map((emoji, i) => {
-            const angle = (i / FOOD_ITEMS.length) * 2 * Math.PI;
-            const radiusPx = 90;
-            const x = Math.cos(angle) * radiusPx;
-            const y = Math.sin(angle) * radiusPx * 0.7;
-            return (
-              <View
-                key={i}
-                style={[
-                  styles.foodBubble,
-                  {
-                    transform: [{ translateX: x }, { translateY: y }],
-                    // Stagger sizes for organic feel
-                    width: i % 2 === 0 ? 52 : 44,
-                    height: i % 2 === 0 ? 52 : 44,
-                  },
-                ]}
-              >
-                <Text style={{ fontSize: i % 2 === 0 ? 26 : 22 }}>{emoji}</Text>
-              </View>
-            );
-          })}
-          {/* Centre journal icon */}
-          <View style={styles.journalCenter}>
-            <Text style={styles.journalIcon}>📖</Text>
-          </View>
+        {/* ── Illustration area — swap View for Image once assets are ready ── */}
+        <View style={styles.illustrationArea}>
+          {/* Place hand-drawn food illustrations here:
+              <Image source={require('../assets/illustrations/food-spread.png')}
+                     style={styles.illustration} resizeMode="contain" /> */}
         </View>
 
-        {/* ── Bottom CTA area ── */}
+        {/* ── Bottom CTA ── */}
         <View style={styles.cta}>
-          <View style={styles.btnWrap}>
-            <PillowButton
-              label="Start"
-              onPress={() => router.push("/onboarding/name" as any)}
-              variant="accent"
-            />
-          </View>
+          <PillowButton
+            label="Start"
+            onPress={() => router.push("/onboarding/name" as any)}
+            variant="pink"
+          />
 
-          {/* Login row */}
           <View style={styles.loginRow}>
             <Text style={styles.loginPrompt}>Already have an account?</Text>
             <TouchableOpacity
@@ -102,6 +49,7 @@ export default function CoverScreen() {
             </TouchableOpacity>
           </View>
         </View>
+
       </SafeAreaView>
     </PaperBackground>
   );
@@ -110,94 +58,39 @@ export default function CoverScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1 },
 
-  topBand: {
-    alignItems: "center",
-    paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
-  },
-  tagline: {
-    fontFamily: fonts.heading400,
-    fontSize: 16,
-    color: colors.textMuted,
-    letterSpacing: 1.2,
-  },
-
   titleBlock: {
     alignItems: "center",
-    paddingTop: spacing.lg,
+    paddingTop: spacing.xxl,
     paddingHorizontal: spacing.xl,
-  },
-  spineLines: {
-    width: 120,
-    gap: 5,
-    marginBottom: spacing.md,
-    alignItems: "center",
-  },
-  spineLine: {
-    width: "100%",
-    height: 1.5,
-    backgroundColor: colors.border,
-    borderRadius: 1,
+    gap: spacing.sm,
   },
   title: {
     fontFamily: fonts.heading700,
     fontSize: 64,
     color: colors.text,
-    lineHeight: 64,
     letterSpacing: -1,
-  },
-  titleAccent: {
-    fontFamily: fonts.heading700,
-    fontSize: 64,
-    color: colors.accent,
-    lineHeight: 60,
-    letterSpacing: -1,
-    marginBottom: spacing.md,
+    lineHeight: 68,
+    textAlign: "center",
   },
   subtitle: {
     fontFamily: fonts.heading400,
     fontSize: 18,
     color: colors.textMuted,
     textAlign: "center",
-    lineHeight: 26,
-    marginTop: spacing.sm,
   },
 
-  // Food ring
-  foodRing: {
+  // Hand-drawn illustration placeholder — takes up the centre space
+  illustrationArea: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    marginTop: spacing.xl,
   },
-  foodBubble: {
-    position: "absolute",
-    borderRadius: radius.pill,
-    backgroundColor: colors.bgCard,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  journalCenter: {
-    width: 64,
-    height: 64,
-    borderRadius: radius.pill,
-    backgroundColor: colors.bgSecondary,
-    borderWidth: 2,
-    borderColor: colors.accent,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  journalIcon: { fontSize: 30 },
 
-  // CTA
   cta: {
     paddingHorizontal: spacing.xl,
     paddingBottom: spacing.xl,
     gap: spacing.md,
   },
-  btnWrap: { width: "100%" },
   loginRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -212,7 +105,7 @@ const styles = StyleSheet.create({
   loginLink: {
     fontFamily: fonts.body700,
     fontSize: 14,
-    color: colors.accentBorder,
+    color: colors.softPink,
     textDecorationLine: "underline",
   },
 });

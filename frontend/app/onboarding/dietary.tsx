@@ -1,46 +1,40 @@
 /**
  * Setup Step 8 — "Anything you avoid eating?"
  */
-import React, { useState } from "react";
+import React from "react";
 import { View, Text, StyleSheet, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter, useLocalSearchParams } from "expo-router";
+import { useRouter } from "expo-router";
 import { PaperBackground } from "../../components/PaperBackground";
 import { PillowButton } from "../../components/PillowButton";
 import { OnboardingHeader } from "../../components/OnboardingHeader";
+import { useOnboardingStore } from "../../stores/onboardingStore";
 import { colors, fonts, spacing, optionChip, optionChipText } from "../../constants/theme";
 
 const DIETS = [
-  { id: "vegetarian", label: "Vegetarian",         emoji: "🥗" },
-  { id: "vegan",      label: "Vegan",              emoji: "🌱" },
-  { id: "halal",      label: "Halal",              emoji: "☪️" },
-  { id: "kosher",     label: "Kosher",             emoji: "✡️" },
-  { id: "gluten",     label: "Gluten-free",        emoji: "🌾" },
-  { id: "dairy",      label: "Dairy-free",         emoji: "🥛" },
-  { id: "nut",        label: "Nut allergy",        emoji: "🥜" },
-  { id: "seafood",    label: "No seafood",         emoji: "🦐" },
+  { id: "vegetarian", label: "Vegetarian"   },
+  { id: "vegan",      label: "Vegan"        },
+  { id: "halal",      label: "Halal"        },
+  { id: "kosher",     label: "Kosher"       },
+  { id: "gluten",     label: "Gluten-free"  },
+  { id: "dairy",      label: "Dairy-free"   },
+  { id: "nut",        label: "Nut allergy"  },
+  { id: "seafood",    label: "Seafood allergy"   },
 ];
 
 export default function DietaryScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams();
-  const [hasRestrictions, setHasRestrictions] = useState<boolean | null>(null);
-  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const { hasRestrictions, dietary, set } = useOnboardingStore();
 
   function toggleDiet(id: string) {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
+    const next = dietary.includes(id)
+      ? dietary.filter((d) => d !== id)
+      : [...dietary, id];
+    set({ dietary: next });
   }
 
-  function handleNext() {
-    const dietary = hasRestrictions ? [...selected].join(",") : "none";
-    router.push({ pathname: "/onboarding/health" as any, params: { ...params, dietary } });
-  }
-
-  const canContinue = hasRestrictions === false || (hasRestrictions === true && selected.size > 0);
+  const canContinue =
+    hasRestrictions === false || (hasRestrictions === true && dietary.length > 0);
 
   return (
     <PaperBackground>
@@ -50,11 +44,11 @@ export default function DietaryScreen() {
           <Text style={styles.header}>Anything you avoid eating?</Text>
           <Text style={styles.sub}>Food allergies, dietary preferences or restrictions</Text>
 
-          {/* Yes / No first */}
+          {/* Yes / No */}
           <View style={styles.yesNoRow}>
             {[
               { label: "No, nothing special", value: false },
-              { label: "Yes, I have some", value: true },
+              { label: "Yes, I have some",    value: true  },
             ].map((opt) => (
               <View
                 key={String(opt.value)}
@@ -62,7 +56,7 @@ export default function DietaryScreen() {
               >
                 <Text
                   style={optionChipText(hasRestrictions === opt.value)}
-                  onPress={() => setHasRestrictions(opt.value)}
+                  onPress={() => set({ hasRestrictions: opt.value })}
                   accessibilityRole="button"
                 >
                   {opt.label}
@@ -71,20 +65,19 @@ export default function DietaryScreen() {
             ))}
           </View>
 
-          {/* Diet selectors — only shown if Yes */}
           {hasRestrictions === true && (
             <View style={styles.restrictions}>
               <Text style={styles.restrictionsLabel}>Select all that apply</Text>
               <View style={styles.chipGrid}>
                 {DIETS.map((d) => (
-                  <View key={d.id} style={[optionChip(selected.has(d.id)), styles.chip]}>
+                  <View key={d.id} style={[optionChip(dietary.includes(d.id)), styles.chip]}>
                     <Text
-                      style={[optionChipText(selected.has(d.id)), styles.chipText]}
+                      style={[optionChipText(dietary.includes(d.id)), styles.chipText]}
                       onPress={() => toggleDiet(d.id)}
                       accessibilityRole="checkbox"
-                      accessibilityState={{ checked: selected.has(d.id) }}
+                      accessibilityState={{ checked: dietary.includes(d.id) }}
                     >
-                      {d.emoji}{"  "}{d.label}
+                      {d.label}
                     </Text>
                   </View>
                 ))}
@@ -94,7 +87,12 @@ export default function DietaryScreen() {
         </ScrollView>
 
         <View style={styles.footer}>
-          <PillowButton label="Next →" onPress={handleNext} disabled={!canContinue} />
+          <PillowButton
+            label="Next"
+            onPress={() => router.push("/onboarding/health" as any)}
+            disabled={!canContinue}
+            variant="pink"
+          />
         </View>
       </SafeAreaView>
     </PaperBackground>

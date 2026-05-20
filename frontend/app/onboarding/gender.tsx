@@ -1,31 +1,26 @@
 /**
  * Setup Step 1 — "How do you identify?"
  */
-import React, { useState } from "react";
+import React from "react";
 import { View, Text, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter, useLocalSearchParams } from "expo-router";
+import { useRouter } from "expo-router";
 import { PaperBackground } from "../../components/PaperBackground";
 import { PillowButton } from "../../components/PillowButton";
 import { OnboardingHeader } from "../../components/OnboardingHeader";
+import { useOnboardingStore } from "../../stores/onboardingStore";
 import { colors, fonts, spacing, optionChip, optionChipText } from "../../constants/theme";
 
 const GENDERS = [
-  { id: "male",       label: "Male",       emoji: "♂️" },
-  { id: "female",     label: "Female",     emoji: "♀️" },
-  { id: "non_binary", label: "Non-binary", emoji: "⚧" },
-  { id: "prefer_not", label: "Prefer not to say", emoji: "🤍" },
+  { id: "male",       label: "Male"              },
+  { id: "female",     label: "Female"            },
+  { id: "non_binary", label: "Non-binary"        },
+  { id: "prefer_not", label: "Prefer not to say" },
 ];
 
 export default function GenderScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams();
-  const [selected, setSelected] = useState<string | null>(null);
-
-  function handleNext() {
-    if (!selected) return;
-    router.push({ pathname: "/onboarding/age" as any, params: { ...params, gender: selected } });
-  }
+  const { gender, set } = useOnboardingStore();
 
   return (
     <PaperBackground>
@@ -37,17 +32,14 @@ export default function GenderScreen() {
 
           <View style={styles.options}>
             {GENDERS.map((g) => (
-              <View
-                key={g.id}
-                style={[optionChip(selected === g.id), styles.option]}
-              >
+              <View key={g.id} style={[optionChip(gender === g.id), styles.option]}>
                 <Text
-                  style={[optionChipText(selected === g.id), styles.optionText]}
-                  onPress={() => setSelected(g.id)}
+                  style={[optionChipText(gender === g.id), styles.optionText]}
+                  onPress={() => set({ gender: g.id })}
                   accessibilityRole="button"
-                  accessibilityState={{ selected: selected === g.id }}
+                  accessibilityState={{ selected: gender === g.id }}
                 >
-                  {g.emoji}{"  "}{g.label}
+                  {g.label}
                 </Text>
               </View>
             ))}
@@ -55,7 +47,12 @@ export default function GenderScreen() {
         </View>
 
         <View style={styles.footer}>
-          <PillowButton label="Next →" onPress={handleNext} disabled={!selected} />
+          <PillowButton
+            label="Next"
+            onPress={() => router.push("/onboarding/age" as any)}
+            disabled={!gender}
+            variant="pink"
+          />
         </View>
       </SafeAreaView>
     </PaperBackground>

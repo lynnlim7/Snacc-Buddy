@@ -1,63 +1,45 @@
 /**
  * Onboarding Step 3 — "What's been on your mind lately?"
  */
-import React, { useState } from "react";
+import React from "react";
 import { View, Text, StyleSheet, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter, useLocalSearchParams } from "expo-router";
+import { useRouter } from "expo-router";
 import { PaperBackground } from "../../components/PaperBackground";
 import { PillowButton } from "../../components/PillowButton";
 import { OnboardingHeader } from "../../components/OnboardingHeader";
-import {
-  colors, fonts, spacing, optionChip, optionChipText,
-} from "../../constants/theme";
+import { useOnboardingStore } from "../../stores/onboardingStore";
+import { colors, fonts, spacing, optionChip, optionChipText } from "../../constants/theme";
 
 const MINDSETS = [
-  { id: "body_comfort",    label: "I want to feel more comfortable in my body" },
-  { id: "feel_healthier",  label: "I want to feel healthier overall" },
-  { id: "gain_strength",   label: "I want to gain strength" },
-  { id: "better_habits",   label: "I want better eating habits" },
-  { id: "more_energy",     label: "I want more energy throughout the day" },
-  { id: "less_guilt",      label: "I want to eat without guilt" },
+  { id: "body_comfort",   label: "I want to feel more comfortable in my body" },
+  { id: "feel_healthier", label: "I want to feel healthier overall"            },
+  { id: "gain_strength",  label: "I want to gain strength"                     },
+  { id: "better_habits",  label: "I want better eating habits"                 },
+  { id: "more_energy",    label: "I want more energy throughout the day"       },
+  { id: "less_guilt",     label: "I want to eat without guilt"                 },
 ];
 
 export default function MindsetScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ name: string; goal: string }>();
-  const [selected, setSelected] = useState<string | null>(null);
-
-  function handleNext() {
-    if (!selected) return;
-    router.push({
-      pathname: "/onboarding/getting-ready" as any,
-      params: { ...params, mindset: selected },
-    });
-  }
+  const { mindset, set } = useOnboardingStore();
 
   return (
     <PaperBackground>
       <SafeAreaView style={styles.safe}>
         <OnboardingHeader step={2} total={16} />
-
-        <ScrollView
-          style={styles.scroll}
-          contentContainerStyle={styles.content}
-          showsVerticalScrollIndicator={false}
-        >
+        <ScrollView style={styles.scroll} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           <Text style={styles.header}>What's been on{"\n"}your mind lately?</Text>
           <Text style={styles.sub}>Pick what resonates most right now</Text>
 
           <View style={styles.options}>
             {MINDSETS.map((m) => (
-              <View
-                key={m.id}
-                style={[optionChip(selected === m.id), styles.option]}
-              >
+              <View key={m.id} style={[optionChip(mindset === m.id), styles.option]}>
                 <Text
-                  style={[optionChipText(selected === m.id), styles.optionText]}
-                  onPress={() => setSelected(m.id)}
+                  style={[optionChipText(mindset === m.id), styles.optionText]}
+                  onPress={() => set({ mindset: m.id })}
                   accessibilityRole="button"
-                  accessibilityState={{ selected: selected === m.id }}
+                  accessibilityState={{ selected: mindset === m.id }}
                 >
                   {m.label}
                 </Text>
@@ -68,10 +50,10 @@ export default function MindsetScreen() {
 
         <View style={styles.footer}>
           <PillowButton
-            label="Next →"
-            onPress={handleNext}
-            disabled={!selected}
-            variant="accent"
+            label="Next"
+            onPress={() => router.push("/onboarding/getting-ready" as any)}
+            disabled={!mindset}
+            variant="pink"
           />
         </View>
       </SafeAreaView>

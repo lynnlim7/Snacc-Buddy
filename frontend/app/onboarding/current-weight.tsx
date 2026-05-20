@@ -1,26 +1,20 @@
 /**
  * Setup Step 4 — "Where are you starting from?"
  */
-import React, { useState } from "react";
+import React from "react";
 import { View, Text, TextInput, StyleSheet, KeyboardAvoidingView, Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter, useLocalSearchParams } from "expo-router";
+import { useRouter } from "expo-router";
 import { PaperBackground } from "../../components/PaperBackground";
 import { PillowButton } from "../../components/PillowButton";
 import { OnboardingHeader } from "../../components/OnboardingHeader";
+import { useOnboardingStore } from "../../stores/onboardingStore";
 import { colors, fonts, spacing, inputStyle } from "../../constants/theme";
 
 export default function CurrentWeightScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams();
-  const [weight, setWeight] = useState("");
-
-  const isValid = Number(weight) >= 20 && Number(weight) <= 500;
-
-  function handleNext() {
-    if (!isValid) return;
-    router.push({ pathname: "/onboarding/goal-weight" as any, params: { ...params, currentWeight: weight } });
-  }
+  const { currentWeight, set } = useOnboardingStore();
+  const isValid = Number(currentWeight) >= 20 && Number(currentWeight) <= 500;
 
   return (
     <PaperBackground>
@@ -36,13 +30,12 @@ export default function CurrentWeightScreen() {
                 style={[inputStyle as any, styles.input]}
                 placeholder="0.0"
                 placeholderTextColor={colors.textLight}
-                value={weight}
-                onChangeText={setWeight}
+                value={currentWeight}
+                onChangeText={(t) => set({ currentWeight: t })}
                 keyboardType="decimal-pad"
                 inputMode="decimal"
                 autoFocus
                 returnKeyType="done"
-                onSubmitEditing={handleNext}
                 accessibilityLabel="Enter your current weight in kilograms"
               />
               <View style={styles.unitBadge}>
@@ -52,7 +45,12 @@ export default function CurrentWeightScreen() {
           </View>
 
           <View style={styles.footer}>
-            <PillowButton label="Next →" onPress={handleNext} disabled={!isValid} />
+            <PillowButton
+              label="Next"
+              onPress={() => router.push("/onboarding/goal-weight" as any)}
+              disabled={!isValid}
+              variant="pink"
+            />
           </View>
         </KeyboardAvoidingView>
       </SafeAreaView>

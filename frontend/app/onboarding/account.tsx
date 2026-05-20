@@ -4,10 +4,10 @@
 import React, { useState } from "react";
 import {
   View, Text, TextInput, StyleSheet, KeyboardAvoidingView,
-  Platform, TouchableOpacity, ActivityIndicator,
+  Platform, TouchableOpacity,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter, useLocalSearchParams } from "expo-router";
+import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { PaperBackground } from "../../components/PaperBackground";
 import { PillowButton } from "../../components/PillowButton";
@@ -16,24 +16,22 @@ import { colors, fonts, spacing, inputStyle, microcopy } from "../../constants/t
 
 export default function AccountScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [email, setEmail]           = useState("");
+  const [password, setPassword]     = useState("");
+  const [showPassword, setShow]     = useState(false);
+  const [loading, setLoading]       = useState(false);
+  const [error, setError]           = useState("");
 
   const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-  const canSubmit = emailValid && password.length >= 8;
+  const canSubmit  = emailValid && password.length >= 8;
 
   async function handleCreate() {
     if (!canSubmit) return;
     setError("");
     setLoading(true);
     try {
-      // TODO: wire up to registration API with all params
-      await new Promise((r) => setTimeout(r, 1500));
-      router.replace({ pathname: "/onboarding/final-welcome" as any, params });
+      await new Promise((r) => setTimeout(r, 1500)); // TODO: wire API
+      router.replace("/onboarding/final-welcome" as any);
     } catch {
       setError(microcopy.error);
     } finally {
@@ -45,10 +43,7 @@ export default function AccountScreen() {
     <PaperBackground>
       <SafeAreaView style={styles.safe}>
         <OnboardingHeader step={13} total={16} />
-        <KeyboardAvoidingView
-          style={styles.kav}
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-        >
+        <KeyboardAvoidingView style={styles.kav} behavior={Platform.OS === "ios" ? "padding" : "height"}>
           <View style={styles.content}>
             <Text style={styles.header}>Save your diary</Text>
             <Text style={styles.sub}>
@@ -81,7 +76,7 @@ export default function AccountScreen() {
                   accessibilityLabel="Password"
                 />
                 <TouchableOpacity
-                  onPress={() => setShowPassword((v) => !v)}
+                  onPress={() => setShow((v) => !v)}
                   style={styles.eyeBtn}
                   accessibilityLabel={showPassword ? "Hide password" : "Show password"}
                 >
@@ -96,9 +91,7 @@ export default function AccountScreen() {
               {error ? <Text style={styles.error}>{error}</Text> : null}
             </View>
 
-            <Text style={styles.hint}>
-              Your diary is always yours. No spam, ever.
-            </Text>
+            <Text style={styles.hint}>Your diary is always yours. No spam, ever.</Text>
           </View>
 
           <View style={styles.footer}>
@@ -107,7 +100,7 @@ export default function AccountScreen() {
               onPress={handleCreate}
               loading={loading}
               disabled={!canSubmit}
-              variant="accent"
+              variant="pink"
             />
           </View>
         </KeyboardAvoidingView>

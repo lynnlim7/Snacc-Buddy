@@ -1,38 +1,29 @@
 /**
  * Setup Step 5 — "What feels like a comfortable goal for you?"
  */
-import React, { useState, useMemo } from "react";
+import React, { useMemo } from "react";
 import { View, Text, TextInput, StyleSheet, KeyboardAvoidingView, Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter, useLocalSearchParams } from "expo-router";
+import { useRouter } from "expo-router";
 import { PaperBackground } from "../../components/PaperBackground";
 import { PillowButton } from "../../components/PillowButton";
 import { OnboardingHeader } from "../../components/OnboardingHeader";
+import { useOnboardingStore } from "../../stores/onboardingStore";
 import { colors, fonts, spacing, inputStyle, journalCard } from "../../constants/theme";
 
 function healthyRange(heightCm: number) {
   const h = heightCm / 100;
-  const low = Math.round(18.5 * h * h);
-  const high = Math.round(24.9 * h * h);
-  return { low, high };
+  return { low: Math.round(18.5 * h * h), high: Math.round(24.9 * h * h) };
 }
 
 export default function GoalWeightScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ height: string; currentWeight: string }>();
-  const [goal, setGoal] = useState("");
-
+  const { goalWeight, height, set } = useOnboardingStore();
   const range = useMemo(() => {
-    const h = Number(params.height);
+    const h = Number(height);
     return h > 0 ? healthyRange(h) : null;
-  }, [params.height]);
-
-  const isValid = Number(goal) >= 20 && Number(goal) <= 500;
-
-  function handleNext() {
-    if (!isValid) return;
-    router.push({ pathname: "/onboarding/pace" as any, params: { ...params, goalWeight: goal } });
-  }
+  }, [height]);
+  const isValid = Number(goalWeight) >= 20 && Number(goalWeight) <= 500;
 
   return (
     <PaperBackground>
@@ -47,13 +38,12 @@ export default function GoalWeightScreen() {
                 style={[inputStyle as any, styles.input]}
                 placeholder="0.0"
                 placeholderTextColor={colors.textLight}
-                value={goal}
-                onChangeText={setGoal}
+                value={goalWeight}
+                onChangeText={(t) => set({ goalWeight: t })}
                 keyboardType="decimal-pad"
                 inputMode="decimal"
                 autoFocus
                 returnKeyType="done"
-                onSubmitEditing={handleNext}
                 accessibilityLabel="Enter your goal weight in kilograms"
               />
               <View style={styles.unitBadge}>
@@ -67,12 +57,16 @@ export default function GoalWeightScreen() {
                 <Text style={styles.rangeValue}>{range.low}–{range.high} kg</Text>
               </View>
             )}
-
-            <Text style={styles.hint}>Goals can always change later 🌿</Text>
+            <Text style={styles.hint}>Goals can always change later</Text>
           </View>
 
           <View style={styles.footer}>
-            <PillowButton label="Next →" onPress={handleNext} disabled={!isValid} />
+            <PillowButton
+              label="Next"
+              onPress={() => router.push("/onboarding/pace" as any)}
+              disabled={!isValid}
+              variant="pink"
+            />
           </View>
         </KeyboardAvoidingView>
       </SafeAreaView>

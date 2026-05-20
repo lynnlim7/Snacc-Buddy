@@ -1,33 +1,28 @@
 /**
  * Setup Step 7 — "What does your everyday life look like?"
  */
-import React, { useState } from "react";
+import React from "react";
 import { View, Text, StyleSheet, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter, useLocalSearchParams } from "expo-router";
+import { useRouter } from "expo-router";
 import { PaperBackground } from "../../components/PaperBackground";
 import { PillowButton } from "../../components/PillowButton";
 import { OnboardingHeader } from "../../components/OnboardingHeader";
+import { useOnboardingStore } from "../../stores/onboardingStore";
 import { colors, fonts, spacing, optionChip, optionChipText } from "../../constants/theme";
 
 const LIFESTYLES = [
-  { id: "student",        label: "Student",               emoji: "📚" },
-  { id: "part_time",      label: "Working part-time",     emoji: "⏰" },
-  { id: "full_time",      label: "Working full-time",     emoji: "💼" },
-  { id: "wfh",            label: "Working from home",     emoji: "🏠" },
-  { id: "homemaker",      label: "Stay-at-home parent",   emoji: "🧸" },
-  { id: "retired",        label: "Retired",               emoji: "🌅" },
+  { id: "student",   label: "Student"              },
+  { id: "part_time", label: "Working part-time"    },
+  { id: "full_time", label: "Working full-time"    },
+  { id: "wfh",       label: "Working from home"    },
+  { id: "homemaker", label: "Stay-at-home parent"  },
+  { id: "retired",   label: "Retired"              },
 ];
 
 export default function LifestyleScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams();
-  const [selected, setSelected] = useState<string | null>(null);
-
-  function handleNext() {
-    if (!selected) return;
-    router.push({ pathname: "/onboarding/dietary" as any, params: { ...params, lifestyle: selected } });
-  }
+  const { lifestyle, set } = useOnboardingStore();
 
   return (
     <PaperBackground>
@@ -39,14 +34,14 @@ export default function LifestyleScreen() {
 
           <View style={styles.options}>
             {LIFESTYLES.map((l) => (
-              <View key={l.id} style={[optionChip(selected === l.id), styles.option]}>
+              <View key={l.id} style={[optionChip(lifestyle === l.id), styles.option]}>
                 <Text
-                  style={[optionChipText(selected === l.id), styles.optionText]}
-                  onPress={() => setSelected(l.id)}
+                  style={[optionChipText(lifestyle === l.id), styles.optionText]}
+                  onPress={() => set({ lifestyle: l.id })}
                   accessibilityRole="button"
-                  accessibilityState={{ selected: selected === l.id }}
+                  accessibilityState={{ selected: lifestyle === l.id }}
                 >
-                  {l.emoji}{"  "}{l.label}
+                  {l.label}
                 </Text>
               </View>
             ))}
@@ -54,7 +49,12 @@ export default function LifestyleScreen() {
         </ScrollView>
 
         <View style={styles.footer}>
-          <PillowButton label="Next →" onPress={handleNext} disabled={!selected} />
+          <PillowButton
+            label="Next"
+            onPress={() => router.push("/onboarding/dietary" as any)}
+            disabled={!lifestyle}
+            variant="pink"
+          />
         </View>
       </SafeAreaView>
     </PaperBackground>

@@ -1,21 +1,21 @@
 /**
  * Setup Step 10 — "Your diary stays personal"
- * Privacy policy + T&C acceptance before account creation.
+ * T&C and Privacy Policy are inline grey links, not stacked buttons.
  */
-import React, { useState } from "react";
+import React from "react";
 import {
   View, Text, StyleSheet, TouchableOpacity, Linking, ScrollView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter, useLocalSearchParams } from "expo-router";
+import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { PaperBackground } from "../../components/PaperBackground";
 import { PillowButton } from "../../components/PillowButton";
 import { OnboardingHeader } from "../../components/OnboardingHeader";
+import { useOnboardingStore } from "../../stores/onboardingStore";
 import { colors, fonts, spacing, journalCard } from "../../constants/theme";
 
-// Replace with actual URLs when available
-const TERMS_URL = "https://snaccbuddy.app/terms";
+const TERMS_URL   = "https://snaccbuddy.app/terms";
 const PRIVACY_URL = "https://snaccbuddy.app/privacy";
 
 const PROMISES = [
@@ -24,18 +24,14 @@ const PROMISES = [
   "Your information stays between you and Snacc Buddy",
 ];
 
+// Reuse the accepted flag from store — add it to OnboardingData if needed,
+// or keep it local since it's purely a UI gate
 export default function PrivacyScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams();
-  const [accepted, setAccepted] = useState(false);
+  const [accepted, setAccepted] = React.useState(false);
 
   function openLink(url: string) {
     Linking.openURL(url).catch(() => {});
-  }
-
-  function handleFinish() {
-    if (!accepted) return;
-    router.push({ pathname: "/onboarding/account" as any, params });
   }
 
   return (
@@ -49,41 +45,35 @@ export default function PrivacyScreen() {
             Your information is only used to personalise your nutrition experience
           </Text>
 
-          {/* Privacy promises */}
+          {/* Privacy promises card */}
           <View style={[journalCard(true), styles.promiseCard]}>
             {PROMISES.map((p) => (
               <View key={p} style={styles.promiseRow}>
-                <Ionicons name="lock-closed" size={16} color={colors.matcha} />
+                <View style={styles.bullet} />
                 <Text style={styles.promiseText}>{p}</Text>
               </View>
             ))}
-          </View>
 
-          {/* Doc links */}
-          <View style={styles.docLinks}>
-            <TouchableOpacity
-              style={styles.docLink}
-              onPress={() => openLink(TERMS_URL)}
-              accessibilityRole="link"
-              accessibilityLabel="Open Terms and Conditions"
-            >
-              <Ionicons name="document-text-outline" size={18} color={colors.accentBorder} />
-              <Text style={styles.docLinkText}>Terms and Conditions</Text>
-              <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
-            </TouchableOpacity>
-
-            <View style={styles.divider} />
-
-            <TouchableOpacity
-              style={styles.docLink}
-              onPress={() => openLink(PRIVACY_URL)}
-              accessibilityRole="link"
-              accessibilityLabel="Open Privacy Policy"
-            >
-              <Ionicons name="shield-checkmark-outline" size={18} color={colors.accentBorder} />
-              <Text style={styles.docLinkText}>Privacy Policy</Text>
-              <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
-            </TouchableOpacity>
+            {/* Inline doc links — two small grey links side by side */}
+            <View style={styles.docRow}>
+              <TouchableOpacity
+                onPress={() => openLink(TERMS_URL)}
+                accessibilityRole="link"
+                accessibilityLabel="Terms and Conditions"
+                hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+              >
+                <Text style={styles.docLink}>Terms and Conditions</Text>
+              </TouchableOpacity>
+              <Text style={styles.docSep}>·</Text>
+              <TouchableOpacity
+                onPress={() => openLink(PRIVACY_URL)}
+                accessibilityRole="link"
+                accessibilityLabel="Privacy Policy"
+                hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+              >
+                <Text style={styles.docLink}>Privacy Policy</Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* Checkbox */}
@@ -105,9 +95,9 @@ export default function PrivacyScreen() {
         <View style={styles.footer}>
           <PillowButton
             label="Finish set up"
-            onPress={handleFinish}
+            onPress={() => router.push("/onboarding/account" as any)}
             disabled={!accepted}
-            variant="accent"
+            variant="pink"
           />
         </View>
       </SafeAreaView>
@@ -123,54 +113,38 @@ const styles = StyleSheet.create({
   sub: { fontFamily: fonts.heading400, fontSize: 18, color: colors.textMuted, lineHeight: 26, marginTop: -spacing.md },
 
   promiseCard: { gap: spacing.md },
-  promiseRow: { flexDirection: "row", alignItems: "flex-start", gap: spacing.sm },
+  promiseRow: { flexDirection: "row", alignItems: "flex-start", gap: spacing.md },
+  bullet: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.softPink, marginTop: 7, flexShrink: 0 },
   promiseText: { fontFamily: fonts.body400, fontSize: 14, color: colors.text, flex: 1, lineHeight: 20 },
 
-  docLinks: {
-    backgroundColor: colors.bgSecondary,
-    borderRadius: 18,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    overflow: "hidden",
-  },
-  docLink: {
+  // Two grey inline links side by side
+  docRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.sm,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 16,
+    marginTop: spacing.xs,
+    flexWrap: "wrap",
   },
-  docLinkText: { fontFamily: fonts.body600, fontSize: 15, color: colors.text, flex: 1 },
-  divider: { height: 1, backgroundColor: colors.border, marginHorizontal: spacing.md },
-
-  checkRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: spacing.md,
-  },
-  checkbox: {
-    width: 22,
-    height: 22,
-    borderRadius: 6,
-    borderWidth: 2,
-    borderColor: colors.border,
-    backgroundColor: colors.bgSecondary,
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: 1,
-    flexShrink: 0,
-  },
-  checkboxChecked: {
-    backgroundColor: colors.accent,
-    borderColor: colors.accentBorder,
-  },
-  checkLabel: {
+  docLink: {
     fontFamily: fonts.body400,
-    fontSize: 14,
-    color: colors.text,
-    flex: 1,
-    lineHeight: 21,
+    fontSize: 12,
+    color: colors.textMuted,
+    textDecorationLine: "underline",
   },
+  docSep: {
+    fontFamily: fonts.body400,
+    fontSize: 12,
+    color: colors.textLight,
+  },
+
+  checkRow: { flexDirection: "row", alignItems: "flex-start", gap: spacing.md },
+  checkbox: {
+    width: 22, height: 22, borderRadius: 6, borderWidth: 2,
+    borderColor: colors.border, backgroundColor: colors.bgSecondary,
+    alignItems: "center", justifyContent: "center", marginTop: 1, flexShrink: 0,
+  },
+  checkboxChecked: { backgroundColor: colors.softPink, borderColor: colors.softPinkBorder },
+  checkLabel: { fontFamily: fonts.body400, fontSize: 14, color: colors.text, flex: 1, lineHeight: 21 },
 
   footer: { paddingHorizontal: spacing.xl, paddingBottom: spacing.xl },
 });
