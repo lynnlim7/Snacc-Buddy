@@ -176,19 +176,18 @@ function NotesPatch({
 function MealRow({
   meal,
   date,
-  onEdit,
-  onDelete,
+  onEditPhoto,
+  onDeletePhoto,
 }: {
   meal: MealEntry;
   date: string;
-  onEdit: () => void;
-  onDelete: () => void;
+  onEditPhoto: (photoId: string) => void;
+  onDeletePhoto: (photoId: string, photoName: string) => void;
 }) {
   const updateMealMood  = useDiaryStore((s) => s.updateMealMood);
   const updateMealNote  = useDiaryStore((s) => s.updateMealNote);
   const [expanded, setExpanded] = useState(false);
 
-  // Animated lift: scale up very slightly on press
   const liftAnim = useRef(new Animated.Value(1)).current;
 
   function onPressIn() {
@@ -217,52 +216,47 @@ function MealRow({
         { transform: [{ scale: liftAnim }] },
       ]}
     >
-      {/* ── Header row ── */}
-      <View style={styles.mealHeaderRow}>
-        {/* Expand/collapse area */}
-        <TouchableOpacity
-          style={styles.mealExpandArea}
-          onPress={() => setExpanded((v) => !v)}
-          onPressIn={onPressIn}
-          onPressOut={onPressOut}
-          activeOpacity={0.85}
-          accessibilityRole="button"
-          accessibilityLabel={`${meal.type}, ${meal.totalCalories} calories`}
-        >
-          <Text style={styles.mealTypeText}>{meal.type}</Text>
-          <Text style={styles.dotLeader} numberOfLines={1}>{DOT_LEADER}</Text>
-          <Text style={styles.mealCalText}>{meal.totalCalories} kcal</Text>
-        </TouchableOpacity>
-
-        {/* Edit + delete */}
-        <View style={styles.mealActions}>
-          <TouchableOpacity
-            style={styles.actionBtn}
-            onPress={onEdit}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            accessibilityLabel={`Edit ${meal.type}`}
-          >
-            <Ionicons name="pencil-outline" size={15} color={colors.textMuted} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.actionBtn}
-            onPress={onDelete}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            accessibilityLabel={`Delete ${meal.type}`}
-          >
-            <Ionicons name="trash-outline" size={15} color={colors.error} />
-          </TouchableOpacity>
-        </View>
-      </View>
+      {/* ── Header row — full row is the expand toggle ── */}
+      <TouchableOpacity
+        style={styles.mealHeaderRow}
+        onPress={() => setExpanded((v) => !v)}
+        onPressIn={onPressIn}
+        onPressOut={onPressOut}
+        activeOpacity={0.85}
+        accessibilityRole="button"
+        accessibilityLabel={`${meal.type}, ${meal.totalCalories} calories`}
+      >
+        <Text style={styles.mealTypeText}>{meal.type}</Text>
+        <Text style={styles.dotLeader} numberOfLines={1}>{DOT_LEADER}</Text>
+        <Text style={styles.mealCalText}>{meal.totalCalories} kcal</Text>
+      </TouchableOpacity>
 
       {/* ── Expanded content ── */}
       {expanded && (
         <View style={styles.expandedContent}>
-          {/* Food item names */}
+          {/* Food items with individual edit + delete */}
           {meal.photos.map((photo) => (
             <View key={photo.id} style={styles.photoRow}>
               <View style={styles.photoBullet} />
               <Text style={styles.photoName} numberOfLines={1}>{photo.name}</Text>
+              <View style={styles.photoItemActions}>
+                <TouchableOpacity
+                  style={styles.actionBtn}
+                  onPress={() => onEditPhoto(photo.id)}
+                  hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                  accessibilityLabel={`Edit ${photo.name}`}
+                >
+                  <Ionicons name="pencil-outline" size={13} color={colors.textMuted} />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.actionBtn}
+                  onPress={() => onDeletePhoto(photo.id, photo.name)}
+                  hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                  accessibilityLabel={`Delete ${photo.name}`}
+                >
+                  <Ionicons name="trash-outline" size={13} color={colors.error} />
+                </TouchableOpacity>
+              </View>
             </View>
           ))}
 
@@ -330,14 +324,17 @@ export default function DiaryScreen() {
   const today = todayKey();
   const [modalVisible,  setModalVisible]  = useState(false);
   const [editPrefill,   setEditPrefill]   = useState<MealType | undefined>(undefined);
+  // Tracks which individual photo is being re-uploaded (edit mode)
+  const [editingPhoto,  setEditingPhoto]  = useState<{ mealId: string; photoId: string } | null>(null);
 
   // Reactive store selectors
-  const meals          = useDiaryStore((s) => s.mealsByDate[today] ?? EMPTY_MEALS);
-  const streak         = useDiaryStore((s) => s.streak);
-  const addMeal        = useDiaryStore((s) => s.addMeal);
-  const deleteMeal     = useDiaryStore((s) => s.deleteMeal);
-  const addPhotoToMeal = useDiaryStore((s) => s.addPhotoToMeal);
-  const userName       = useOnboardingStore((s) => s.name);
+  const meals               = useDiaryStore((s) => s.mealsByDate[today] ?? EMPTY_MEALS);
+  const streak              = useDiaryStore((s) => s.streak);
+  const addMeal             = useDiaryStore((s) => s.addMeal);
+  const deleteMeal          = useDiaryStore((s) => s.deleteMeal);
+  const addPhotoToMeal      = useDiaryStore((s) => s.addPhotoToMeal);
+  const deletePhotoFromMeal = useDiaryStore((s) => s.deletePhotoFromMeal);
+  const userName            = useOnboardingStore((s) => s.name);
 
   const totalCalories = meals.reduce((sum, m) => sum + m.totalCalories, 0);
 
@@ -352,35 +349,23 @@ export default function DiaryScreen() {
     month:   "long",
   });
 
-  /** Open modal in edit mode — pre-selects the meal type */
-  function handleEditMeal(type: MealType) {
-    setEditPrefill(type);
-    setModalVisible(true);
-  }
-
   function handleModalClose() {
     setModalVisible(false);
     setEditPrefill(undefined);
+    setEditingPhoto(null);
   }
 
   /**
-   * Edit mode  → delete the existing entry of that type, then add the new one
-   *              (replaces the whole meal, preserving mood/note if desired)
-   * Add mode   → merge photos into an existing same-type entry (up to 5),
-   *              or create a brand-new entry
+   * Photo-edit mode → swap out just the one photo that was re-uploaded.
+   * Add mode        → merge into existing same-type meal (up to 5) or create new.
    */
   function handleSaveMeal(incoming: MealEntry) {
-    if (editPrefill) {
-      // Replace: remove old entry so the new photo & analysis start fresh
-      const old = meals.find((m) => m.type === incoming.type);
-      if (old) {
-        // Carry over mood + note so the user doesn't lose them
-        incoming = { ...incoming, mood: old.mood, note: old.note };
-        deleteMeal(today, old.id);
-      }
-      addMeal(today, incoming);
+    if (editingPhoto) {
+      // Replace the specific photo being edited, keep everything else
+      deletePhotoFromMeal(today, editingPhoto.mealId, editingPhoto.photoId);
+      addPhotoToMeal(today, editingPhoto.mealId, incoming.photos[0]);
     } else {
-      // Add: merge photo into existing meal if room, otherwise new entry
+      // Add mode: merge or create
       const existing = meals.find((m) => m.type === incoming.type);
       if (existing && existing.photos.length < 5) {
         incoming.photos.forEach((photo) =>
@@ -393,14 +378,33 @@ export default function DiaryScreen() {
     handleModalClose();
   }
 
-  /** Confirmation + delete — lives here so it closes over the live store fn */
-  function handleDeleteMeal(mealId: string, mealType: string) {
+  /** Opens the modal to re-upload a specific photo */
+  function handleEditPhoto(mealId: string, photoId: string, mealType: MealType) {
+    setEditingPhoto({ mealId, photoId });
+    setEditPrefill(mealType);
+    setModalVisible(true);
+  }
+
+  /** Deletes one photo; if it was the last, removes the whole meal */
+  function handleDeletePhoto(mealId: string, photoId: string, photoName: string) {
+    const meal = meals.find((m) => m.id === mealId);
+    if (!meal) return;
+    const isLast = meal.photos.length === 1;
     Alert.alert(
-      `Delete ${mealType}?`,
-      "This will remove the entire meal entry from your diary.",
+      `Remove "${photoName}"?`,
+      isLast
+        ? "This is the only item — the entire meal entry will be removed."
+        : "This item will be removed from the meal.",
       [
         { text: "Cancel", style: "cancel" },
-        { text: "Delete", style: "destructive", onPress: () => deleteMeal(today, mealId) },
+        {
+          text: "Remove",
+          style: "destructive",
+          onPress: () =>
+            isLast
+              ? deleteMeal(today, mealId)
+              : deletePhotoFromMeal(today, mealId, photoId),
+        },
       ]
     );
   }
@@ -456,8 +460,12 @@ export default function DiaryScreen() {
                   key={meal.id}
                   meal={meal}
                   date={today}
-                  onEdit={() => handleEditMeal(meal.type)}
-                  onDelete={() => handleDeleteMeal(meal.id, meal.type)}
+                  onEditPhoto={(photoId) =>
+                    handleEditPhoto(meal.id, photoId, meal.type)
+                  }
+                  onDeletePhoto={(photoId, photoName) =>
+                    handleDeletePhoto(meal.id, photoId, photoName)
+                  }
                 />
               ))
             )}
@@ -467,7 +475,7 @@ export default function DiaryScreen() {
         {/* ── Floating action button ── */}
         <TouchableOpacity
           style={styles.fab}
-          onPress={() => { setEditPrefill(undefined); setModalVisible(true); }}
+          onPress={() => setModalVisible(true)}
           accessibilityRole="button"
           accessibilityLabel="Log a meal"
         >
@@ -660,13 +668,8 @@ const styles = StyleSheet.create({
       android: { elevation: 4 },
     }),
   },
+  // Full row is the expand toggle — no nested buttons
   mealHeaderRow: {
-    flexDirection: "row",
-    alignItems:    "center",
-    gap:           8,
-  },
-  mealExpandArea: {
-    flex:          1,
     flexDirection: "row",
     alignItems:    "center",
     gap:           5,
@@ -691,12 +694,6 @@ const styles = StyleSheet.create({
     color:      colors.textMuted,
     flexShrink: 0,
   },
-  mealActions: {
-    flexDirection: "row",
-    alignItems:    "center",
-    gap:           4,
-    flexShrink:    0,
-  },
   actionBtn: {
     width:           30,
     height:          30,
@@ -714,7 +711,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
 
-  // ── Food item name sub-rows ──
+  // ── Food item rows (individual edit + delete) ──
   photoRow: {
     flexDirection: "row",
     alignItems:    "center",
@@ -733,6 +730,12 @@ const styles = StyleSheet.create({
     fontSize:   15,
     color:      colors.textMuted,
     flex:       1,
+  },
+  photoItemActions: {
+    flexDirection: "row",
+    alignItems:    "center",
+    gap:           4,
+    flexShrink:    0,
   },
 
   // ── Polaroid strip ──
