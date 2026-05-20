@@ -1,5 +1,6 @@
 import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { Platform } from "react-native";
 import { colors, fonts } from "../../constants/theme";
 
 type IconName = React.ComponentProps<typeof Ionicons>["name"];
@@ -9,7 +10,7 @@ function TabIcon({ name, focused }: { name: IconName; focused: boolean }) {
     <Ionicons
       name={name}
       size={22}
-      color={focused ? colors.pink300 : colors.textMuted}
+      color={focused ? colors.accent : colors.textMuted}
     />
   );
 }
@@ -19,14 +20,14 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: colors.pink300,
+        tabBarActiveTintColor: colors.accent,
         tabBarInactiveTintColor: colors.textMuted,
         tabBarStyle: {
-          backgroundColor: colors.white,
-          borderTopWidth: 2,
-          borderTopColor: colors.pink200,
-          height: 64,
-          paddingBottom: 10,
+          backgroundColor: colors.bgSecondary,
+          borderTopWidth: 1.5,
+          borderTopColor: colors.border,
+          height: Platform.OS === "ios" ? 84 : 64,
+          paddingBottom: Platform.OS === "ios" ? 24 : 10,
           paddingTop: 8,
         },
         tabBarLabelStyle: {
@@ -39,7 +40,7 @@ export default function TabLayout() {
         name="index"
         options={{
           title: "Today",
-          tabBarIcon: ({ focused }) => <TabIcon name="home-outline" focused={focused} />,
+          tabBarIcon: ({ focused }) => <TabIcon name="book-outline" focused={focused} />,
         }}
       />
       <Tabs.Screen
@@ -52,8 +53,8 @@ export default function TabLayout() {
       <Tabs.Screen
         name="analytics"
         options={{
-          title: "Analytics",
-          tabBarIcon: ({ focused }) => <TabIcon name="bar-chart-outline" focused={focused} />,
+          title: "Progress",
+          tabBarIcon: ({ focused }) => <TabIcon name="trending-up-outline" focused={focused} />,
         }}
       />
     </Tabs>

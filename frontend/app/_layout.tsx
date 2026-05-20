@@ -5,11 +5,10 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import * as SplashScreen from "expo-splash-screen";
 import {
   useFonts,
-  Baloo2_400Regular,
-  Baloo2_600SemiBold,
-  Baloo2_700Bold,
-  Baloo2_800ExtraBold,
-} from "@expo-google-fonts/baloo-2";
+  Caveat_400Regular,
+  Caveat_600SemiBold,
+  Caveat_700Bold,
+} from "@expo-google-fonts/caveat";
 import {
   useFonts as useNunitoFonts,
   Nunito_400Regular,
@@ -17,15 +16,15 @@ import {
   Nunito_600SemiBold,
   Nunito_700Bold,
 } from "@expo-google-fonts/nunito";
+import { colors } from "../constants/theme";
 
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
-  const [balooLoaded] = useFonts({
-    Baloo2_400Regular,
-    Baloo2_600SemiBold,
-    Baloo2_700Bold,
-    Baloo2_800ExtraBold,
+  const [caveatLoaded] = useFonts({
+    Caveat_400Regular,
+    Caveat_600SemiBold,
+    Caveat_700Bold,
   });
 
   const [nunitoLoaded] = useNunitoFonts({
@@ -36,17 +35,23 @@ export default function RootLayout() {
   });
 
   useEffect(() => {
-    if (balooLoaded && nunitoLoaded) {
+    if (caveatLoaded && nunitoLoaded) {
       SplashScreen.hideAsync();
     }
-  }, [balooLoaded, nunitoLoaded]);
+  }, [caveatLoaded, nunitoLoaded]);
 
-  if (!balooLoaded || !nunitoLoaded) return null;
+  if (!caveatLoaded || !nunitoLoaded) return null;
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <Stack screenOptions={{ headerShown: false }} />
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            contentStyle: { backgroundColor: colors.bg },
+            animation: "fade_from_bottom",
+          }}
+        />
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
