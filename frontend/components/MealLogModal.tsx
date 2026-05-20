@@ -137,6 +137,8 @@ export function MealLogModal({ visible, onClose, onSave, prefillType }: Props) {
       type: mealType,
       photos: [photo],
       totalCalories: result.nutrition.calories,
+      mood: [],
+      note: "",
     };
     onSave(meal);
     reset();

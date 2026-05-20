@@ -32,6 +32,10 @@ export interface MealEntry {
   type: MealType;
   photos: FoodPhoto[]; // max 5
   totalCalories: number;
+  /** Selected mood stickers for this meal */
+  mood: string[];
+  /** Free-text diary note */
+  note: string;
 }
 
 interface DiaryState {
@@ -46,6 +50,8 @@ interface DiaryState {
   addPhotoToMeal: (date: string, mealId: string, photo: FoodPhoto) => void;
   deletePhotoFromMeal: (date: string, mealId: string, photoId: string) => void;
   updateMealName: (date: string, mealId: string, photoId: string, name: string) => void;
+  updateMealMood: (date: string, mealId: string, mood: string[]) => void;
+  updateMealNote: (date: string, mealId: string, note: string) => void;
 }
 
 export const useDiaryStore = create<DiaryState>((set, get) => ({
@@ -129,6 +135,26 @@ export const useDiaryStore = create<DiaryState>((set, get) => ({
         },
       };
     }),
+
+  updateMealMood: (date, mealId, mood) =>
+    set((state) => ({
+      mealsByDate: {
+        ...state.mealsByDate,
+        [date]: (state.mealsByDate[date] ?? []).map((m) =>
+          m.id !== mealId ? m : { ...m, mood }
+        ),
+      },
+    })),
+
+  updateMealNote: (date, mealId, note) =>
+    set((state) => ({
+      mealsByDate: {
+        ...state.mealsByDate,
+        [date]: (state.mealsByDate[date] ?? []).map((m) =>
+          m.id !== mealId ? m : { ...m, note }
+        ),
+      },
+    })),
 }));
 
 // ─── Helpers ──────────────────────────────────────────────────

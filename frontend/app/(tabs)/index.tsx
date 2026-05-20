@@ -9,7 +9,7 @@
  *   - Sub-items per meal (food photo names)
  *   - Floating "+" FAB → opens MealLogModal
  */
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import {
   ScrollView,
   StyleSheet,
@@ -19,7 +19,9 @@ import {
   Dimensions,
   Platform,
   Alert,
-  ActionSheetIOS,
+  Image,
+  TextInput,
+  Animated,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -29,6 +31,7 @@ import {
   useDiaryStore,
   todayKey,
   type MealEntry,
+  type MealType,
 } from "../../stores/diaryStore";
 import { useOnboardingStore } from "../../stores/onboardingStore";
 import { colors, fonts, spacing, radius } from "../../constants/theme";
@@ -54,6 +57,14 @@ const DOT_LEADER = ". . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 
  *  there are no meals, which would cause an infinite Zustand re-render loop. */
 const EMPTY_MEALS: MealEntry[] = [];
 
+const MOODS = [
+  "comfort food", "busy day", "fresh", "calm",
+  "treating myself", "tired", "energetic",
+] as const;
+
+/** Scrapbook-style tilt per photo index */
+const POLAROID_ROTATIONS = ["-2deg", "1deg", "-1deg", "2deg", "0deg"];
+
 // ─── Ruled lines ─────────────────────────────────────────────
 
 function RuledLines() {
@@ -69,86 +80,206 @@ function RuledLines() {
   );
 }
 
+// ─── Polaroid strip ───────────────────────────────────────────
+
+function PolaroidStrip({ photos }: { photos: MealEntry["photos"] }) {
+  if (photos.length === 0) return null;
+  return (
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={styles.polaroidScroll}
+    >
+      {photos.map((photo, i) => (
+        <View
+          key={photo.id}
+          style={[
+            styles.polaroid,
+            { transform: [{ rotate: POLAROID_ROTATIONS[i % POLAROID_ROTATIONS.length] }] },
+          ]}
+        >
+          <Image source={{ uri: photo.uri }} style={styles.polaroidImg} resizeMode="cover" />
+          <Text style={styles.polaroidCaption} numberOfLines={1}>{photo.name}</Text>
+        </View>
+      ))}
+    </ScrollView>
+  );
+}
+
+// ─── Mood stickers ────────────────────────────────────────────
+
+function MoodSection({
+  moods,
+  onToggle,
+}: {
+  moods: string[];
+  onToggle: (mood: string) => void;
+}) {
+  return (
+    <View style={styles.moodSection}>
+      <Text style={styles.moodLabel}>mood today</Text>
+      <View style={styles.moodGrid}>
+        {MOODS.map((mood) => {
+          const active = moods.includes(mood);
+          return (
+            <TouchableOpacity
+              key={mood}
+              style={[styles.moodSticker, active && styles.moodStickerActive]}
+              onPress={() => onToggle(mood)}
+              activeOpacity={0.75}
+            >
+              <Text style={[styles.moodStickerText, active && styles.moodStickerTextActive]}>
+                {mood}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
+// ─── Notes patch ──────────────────────────────────────────────
+
+function NotesPatch({
+  note,
+  onSave,
+}: {
+  note: string;
+  onSave: (text: string) => void;
+}) {
+  const [text, setText] = useState(note);
+
+  return (
+    <View style={styles.notesPatch}>
+      {/* Tape strips */}
+      <View style={styles.tapeLeft} />
+      <View style={styles.tapeRight} />
+
+      <Text style={styles.notesLabel}>today's note</Text>
+      <TextInput
+        style={styles.notesInput}
+        value={text}
+        onChangeText={setText}
+        onBlur={() => onSave(text)}
+        placeholder="late night ramen with friends.."
+        placeholderTextColor={colors.textLight}
+        multiline
+        maxLength={200}
+      />
+    </View>
+  );
+}
+
 // ─── Meal row ─────────────────────────────────────────────────
 
-function MealRow({ meal, date }: { meal: MealEntry; date: string }) {
-  const deleteMeal = useDiaryStore((s) => s.deleteMeal);
-  const [expanded, setExpanded] = useState(true);
+function MealRow({
+  meal,
+  date,
+  onEdit,
+  onDelete,
+}: {
+  meal: MealEntry;
+  date: string;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  const updateMealMood  = useDiaryStore((s) => s.updateMealMood);
+  const updateMealNote  = useDiaryStore((s) => s.updateMealNote);
+  const [expanded, setExpanded] = useState(false);
 
-  function confirmDelete() {
-    Alert.alert(
-      `Delete ${meal.type}?`,
-      "This will remove the meal entry from your diary.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: () => deleteMeal(date, meal.id),
-        },
-      ]
-    );
+  // Animated lift: scale up very slightly on press
+  const liftAnim = useRef(new Animated.Value(1)).current;
+
+  function onPressIn() {
+    Animated.spring(liftAnim, {
+      toValue: 1.015, speed: 30, bounciness: 0, useNativeDriver: true,
+    }).start();
+  }
+  function onPressOut() {
+    Animated.spring(liftAnim, {
+      toValue: 1, speed: 20, bounciness: 0, useNativeDriver: true,
+    }).start();
   }
 
-  function handleOptions() {
-    if (Platform.OS === "ios") {
-      ActionSheetIOS.showActionSheetWithOptions(
-        {
-          options: ["Cancel", "Delete meal"],
-          cancelButtonIndex: 0,
-          destructiveButtonIndex: 1,
-        },
-        (idx) => {
-          if (idx === 1) confirmDelete();
-        }
-      );
-    } else {
-      Alert.alert("Options", "", [
-        { text: "Delete meal", style: "destructive", onPress: confirmDelete },
-        { text: "Cancel", style: "cancel" },
-      ]);
-    }
+  function toggleMood(mood: string) {
+    const next = meal.mood.includes(mood)
+      ? meal.mood.filter((m) => m !== mood)
+      : [...meal.mood, mood];
+    updateMealMood(date, meal.id, next);
   }
 
   return (
-    <View style={styles.mealBlock}>
-      {/* Dot-leader header row */}
-      <TouchableOpacity
-        style={styles.mealHeaderRow}
-        onPress={() => setExpanded((v) => !v)}
-        activeOpacity={0.75}
-        accessibilityRole="button"
-        accessibilityLabel={`${meal.type}, ${meal.totalCalories} calories`}
-      >
-        <Text style={styles.mealTypeText}>{meal.type}</Text>
-
-        <Text style={styles.dotLeader} numberOfLines={1}>
-          {DOT_LEADER}
-        </Text>
-
-        <Text style={styles.mealCalText}>{meal.totalCalories} kcal</Text>
-
+    <Animated.View
+      style={[
+        styles.mealBlock,
+        expanded && styles.mealBlockExpanded,
+        { transform: [{ scale: liftAnim }] },
+      ]}
+    >
+      {/* ── Header row ── */}
+      <View style={styles.mealHeaderRow}>
+        {/* Expand/collapse area */}
         <TouchableOpacity
-          onPress={handleOptions}
-          style={styles.mealMenuBtn}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          accessibilityLabel="Meal options"
+          style={styles.mealExpandArea}
+          onPress={() => setExpanded((v) => !v)}
+          onPressIn={onPressIn}
+          onPressOut={onPressOut}
+          activeOpacity={0.85}
+          accessibilityRole="button"
+          accessibilityLabel={`${meal.type}, ${meal.totalCalories} calories`}
         >
-          <Ionicons name="ellipsis-horizontal" size={15} color={colors.textMuted} />
+          <Text style={styles.mealTypeText}>{meal.type}</Text>
+          <Text style={styles.dotLeader} numberOfLines={1}>{DOT_LEADER}</Text>
+          <Text style={styles.mealCalText}>{meal.totalCalories} kcal</Text>
         </TouchableOpacity>
-      </TouchableOpacity>
 
-      {/* Sub-items: food photo names */}
-      {expanded &&
-        meal.photos.map((photo) => (
-          <View key={photo.id} style={styles.photoRow}>
-            <View style={styles.photoBullet} />
-            <Text style={styles.photoName} numberOfLines={1}>
-              {photo.name}
-            </Text>
-          </View>
-        ))}
-    </View>
+        {/* Edit + delete */}
+        <View style={styles.mealActions}>
+          <TouchableOpacity
+            style={styles.actionBtn}
+            onPress={onEdit}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            accessibilityLabel={`Edit ${meal.type}`}
+          >
+            <Ionicons name="pencil-outline" size={15} color={colors.textMuted} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.actionBtn}
+            onPress={onDelete}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            accessibilityLabel={`Delete ${meal.type}`}
+          >
+            <Ionicons name="trash-outline" size={15} color={colors.error} />
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* ── Expanded content ── */}
+      {expanded && (
+        <View style={styles.expandedContent}>
+          {/* Food item names */}
+          {meal.photos.map((photo) => (
+            <View key={photo.id} style={styles.photoRow}>
+              <View style={styles.photoBullet} />
+              <Text style={styles.photoName} numberOfLines={1}>{photo.name}</Text>
+            </View>
+          ))}
+
+          {/* Polaroid thumbnails */}
+          <PolaroidStrip photos={meal.photos} />
+
+          {/* Mood stickers */}
+          <MoodSection moods={meal.mood} onToggle={toggleMood} />
+
+          {/* Notes sticky patch */}
+          <NotesPatch
+            note={meal.note}
+            onSave={(text) => updateMealNote(date, meal.id, text)}
+          />
+        </View>
+      )}
+    </Animated.View>
   );
 }
 
@@ -197,14 +328,16 @@ function CalorieCard({ total, goal }: { total: number; goal: number }) {
 
 export default function DiaryScreen() {
   const today = todayKey();
-  const [modalVisible, setModalVisible] = useState(false);
+  const [modalVisible,  setModalVisible]  = useState(false);
+  const [editPrefill,   setEditPrefill]   = useState<MealType | undefined>(undefined);
 
   // Reactive store selectors
-  const meals        = useDiaryStore((s) => s.mealsByDate[today] ?? EMPTY_MEALS);
-  const streak       = useDiaryStore((s) => s.streak);
-  const addMeal      = useDiaryStore((s) => s.addMeal);
+  const meals          = useDiaryStore((s) => s.mealsByDate[today] ?? EMPTY_MEALS);
+  const streak         = useDiaryStore((s) => s.streak);
+  const addMeal        = useDiaryStore((s) => s.addMeal);
+  const deleteMeal     = useDiaryStore((s) => s.deleteMeal);
   const addPhotoToMeal = useDiaryStore((s) => s.addPhotoToMeal);
-  const userName     = useOnboardingStore((s) => s.name);
+  const userName       = useOnboardingStore((s) => s.name);
 
   const totalCalories = meals.reduce((sum, m) => sum + m.totalCalories, 0);
 
@@ -219,17 +352,57 @@ export default function DiaryScreen() {
     month:   "long",
   });
 
-  /** Merge into existing same-type meal (up to 5 photos) or add new */
-  function handleSaveMeal(meal: MealEntry) {
-    const existing = meals.find((m) => m.type === meal.type);
-    if (existing && existing.photos.length < 5) {
-      meal.photos.forEach((photo) =>
-        addPhotoToMeal(today, existing.id, photo)
-      );
-    } else {
-      addMeal(today, meal);
-    }
+  /** Open modal in edit mode — pre-selects the meal type */
+  function handleEditMeal(type: MealType) {
+    setEditPrefill(type);
+    setModalVisible(true);
+  }
+
+  function handleModalClose() {
     setModalVisible(false);
+    setEditPrefill(undefined);
+  }
+
+  /**
+   * Edit mode  → delete the existing entry of that type, then add the new one
+   *              (replaces the whole meal, preserving mood/note if desired)
+   * Add mode   → merge photos into an existing same-type entry (up to 5),
+   *              or create a brand-new entry
+   */
+  function handleSaveMeal(incoming: MealEntry) {
+    if (editPrefill) {
+      // Replace: remove old entry so the new photo & analysis start fresh
+      const old = meals.find((m) => m.type === incoming.type);
+      if (old) {
+        // Carry over mood + note so the user doesn't lose them
+        incoming = { ...incoming, mood: old.mood, note: old.note };
+        deleteMeal(today, old.id);
+      }
+      addMeal(today, incoming);
+    } else {
+      // Add: merge photo into existing meal if room, otherwise new entry
+      const existing = meals.find((m) => m.type === incoming.type);
+      if (existing && existing.photos.length < 5) {
+        incoming.photos.forEach((photo) =>
+          addPhotoToMeal(today, existing.id, photo)
+        );
+      } else {
+        addMeal(today, incoming);
+      }
+    }
+    handleModalClose();
+  }
+
+  /** Confirmation + delete — lives here so it closes over the live store fn */
+  function handleDeleteMeal(mealId: string, mealType: string) {
+    Alert.alert(
+      `Delete ${mealType}?`,
+      "This will remove the entire meal entry from your diary.",
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Delete", style: "destructive", onPress: () => deleteMeal(today, mealId) },
+      ]
+    );
   }
 
   return (
@@ -279,7 +452,13 @@ export default function DiaryScreen() {
               <EmptyDiary />
             ) : (
               meals.map((meal) => (
-                <MealRow key={meal.id} meal={meal} date={today} />
+                <MealRow
+                  key={meal.id}
+                  meal={meal}
+                  date={today}
+                  onEdit={() => handleEditMeal(meal.type)}
+                  onDelete={() => handleDeleteMeal(meal.id, meal.type)}
+                />
               ))
             )}
           </View>
@@ -288,7 +467,7 @@ export default function DiaryScreen() {
         {/* ── Floating action button ── */}
         <TouchableOpacity
           style={styles.fab}
-          onPress={() => setModalVisible(true)}
+          onPress={() => { setEditPrefill(undefined); setModalVisible(true); }}
           accessibilityRole="button"
           accessibilityLabel="Log a meal"
         >
@@ -298,8 +477,9 @@ export default function DiaryScreen() {
         {/* ── Meal log modal ── */}
         <MealLogModal
           visible={modalVisible}
-          onClose={() => setModalVisible(false)}
+          onClose={handleModalClose}
           onSave={handleSaveMeal}
+          prefillType={editPrefill}
         />
       </SafeAreaView>
     </PaperBackground>
@@ -463,23 +643,46 @@ const styles = StyleSheet.create({
   mealBlock: {
     gap: 5,
   },
+  mealBlockExpanded: {
+    backgroundColor: colors.bgSecondary,
+    borderRadius:    radius.md,
+    borderWidth:     1.5,
+    borderColor:     colors.border,
+    padding:         spacing.md,
+    marginHorizontal: -spacing.sm,
+    ...Platform.select({
+      ios: {
+        shadowColor:   colors.accentBorder,
+        shadowOffset:  { width: 0, height: 4 },
+        shadowOpacity: 0.18,
+        shadowRadius:  10,
+      },
+      android: { elevation: 4 },
+    }),
+  },
   mealHeaderRow: {
+    flexDirection: "row",
+    alignItems:    "center",
+    gap:           8,
+  },
+  mealExpandArea: {
+    flex:          1,
     flexDirection: "row",
     alignItems:    "center",
     gap:           5,
   },
   mealTypeText: {
-    fontFamily:   fonts.heading600,
-    fontSize:     18,
-    color:        colors.text,
-    flexShrink:   0,
+    fontFamily: fonts.heading600,
+    fontSize:   18,
+    color:      colors.text,
+    flexShrink: 0,
   },
   dotLeader: {
-    flex:       1,
-    fontFamily: fonts.body400,
-    fontSize:   13,
-    color:      colors.textLight,
-    overflow:   "hidden",
+    flex:          1,
+    fontFamily:    fonts.body400,
+    fontSize:      13,
+    color:         colors.textLight,
+    overflow:      "hidden",
     letterSpacing: 1,
   },
   mealCalText: {
@@ -488,16 +691,34 @@ const styles = StyleSheet.create({
     color:      colors.textMuted,
     flexShrink: 0,
   },
-  mealMenuBtn: {
-    paddingLeft: 2,
-    flexShrink:  0,
+  mealActions: {
+    flexDirection: "row",
+    alignItems:    "center",
+    gap:           4,
+    flexShrink:    0,
+  },
+  actionBtn: {
+    width:           30,
+    height:          30,
+    borderRadius:    15,
+    backgroundColor: colors.bgSecondary,
+    borderWidth:     1.5,
+    borderColor:     colors.border,
+    alignItems:      "center",
+    justifyContent:  "center",
   },
 
-  // ── Sub-items ──
+  // ── Expanded content wrapper ──
+  expandedContent: {
+    gap:       spacing.md,
+    marginTop: spacing.sm,
+  },
+
+  // ── Food item name sub-rows ──
   photoRow: {
     flexDirection: "row",
     alignItems:    "center",
-    paddingLeft:   spacing.md,
+    paddingLeft:   spacing.sm,
     gap:           8,
   },
   photoBullet: {
@@ -512,6 +733,146 @@ const styles = StyleSheet.create({
     fontSize:   15,
     color:      colors.textMuted,
     flex:       1,
+  },
+
+  // ── Polaroid strip ──
+  polaroidScroll: {
+    paddingVertical: spacing.md,
+    gap:             spacing.md,
+    paddingHorizontal: 4, // room for shadow bleed
+  },
+  polaroid: {
+    backgroundColor: "#FFFDF8",
+    padding:         5,
+    paddingBottom:   22,
+    borderWidth:     1,
+    borderColor:     colors.border,
+    borderRadius:    2,
+    ...Platform.select({
+      ios: {
+        shadowColor:   "#4A4036",
+        shadowOffset:  { width: 1, height: 2 },
+        shadowOpacity: 0.18,
+        shadowRadius:  3,
+      },
+      android: { elevation: 3 },
+    }),
+  },
+  polaroidImg: {
+    width:  90,
+    height: 90,
+    borderRadius: 1,
+  },
+  polaroidCaption: {
+    position:   "absolute",
+    bottom:     4,
+    left:       4,
+    right:      4,
+    textAlign:  "center",
+    fontFamily: fonts.heading400,
+    fontSize:   10,
+    color:      colors.textMuted,
+  },
+
+  // ── Mood stickers ──
+  moodSection: {
+    gap: spacing.sm,
+  },
+  moodLabel: {
+    fontFamily:    fonts.body600,
+    fontSize:      12,
+    color:         colors.textMuted,
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+  },
+  moodGrid: {
+    flexDirection: "row",
+    flexWrap:      "wrap",
+    gap:           spacing.sm,
+  },
+  moodSticker: {
+    paddingHorizontal: 14,
+    paddingVertical:   7,
+    borderRadius:      radius.pill,
+    borderWidth:       1.5,
+    borderColor:       colors.border,
+    backgroundColor:   colors.bg,
+  },
+  moodStickerActive: {
+    backgroundColor: colors.pastelBlue,
+    borderColor:     colors.pastelBlueBorder,
+    ...Platform.select({
+      ios: {
+        shadowColor:   colors.pastelBlueBorder,
+        shadowOffset:  { width: 0, height: 2 },
+        shadowOpacity: 0.35,
+        shadowRadius:  0,
+      },
+      android: { elevation: 2 },
+    }),
+  },
+  moodStickerText: {
+    fontFamily: fonts.body500,
+    fontSize:   13,
+    color:      colors.textMuted,
+  },
+  moodStickerTextActive: {
+    color:      colors.text,
+    fontFamily: fonts.body600,
+  },
+
+  // ── Notes patch ──
+  notesPatch: {
+    backgroundColor: "#EDE5D8",
+    borderRadius:    radius.sm,
+    borderWidth:     1,
+    borderColor:     "#CFC4B0",
+    padding:         spacing.md,
+    paddingTop:      spacing.lg,  // extra room for tape
+    marginTop:       spacing.sm,
+    gap:             spacing.sm,
+    position:        "relative",
+    overflow:        "visible",
+  },
+  // Tape strips — absolutely positioned at the top
+  tapeLeft: {
+    position:        "absolute",
+    top:             -8,
+    left:            20,
+    width:           38,
+    height:          16,
+    borderRadius:    2,
+    backgroundColor: "rgba(255, 253, 248, 0.78)",
+    borderWidth:     0.5,
+    borderColor:     "rgba(200, 185, 165, 0.45)",
+    transform:       [{ rotate: "-4deg" }],
+  },
+  tapeRight: {
+    position:        "absolute",
+    top:             -7,
+    right:           24,
+    width:           38,
+    height:          16,
+    borderRadius:    2,
+    backgroundColor: "rgba(255, 253, 248, 0.78)",
+    borderWidth:     0.5,
+    borderColor:     "rgba(200, 185, 165, 0.45)",
+    transform:       [{ rotate: "3deg" }],
+  },
+  notesLabel: {
+    fontFamily:    fonts.body600,
+    fontSize:      12,
+    color:         "#8C7B6A",
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+  },
+  notesInput: {
+    fontFamily: fonts.heading400,
+    fontSize:   16,
+    color:      colors.text,
+    minHeight:  56,
+    textAlignVertical: "top",
+    lineHeight: 22,
   },
 
   // ── Empty state ──
