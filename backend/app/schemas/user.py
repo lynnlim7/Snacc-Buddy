@@ -12,13 +12,10 @@ class UserRead(schemas.BaseUser[uuid.UUID]):
     current_weight_kg: Optional[float] = None
     goal_weight_kg: Optional[float] = None
     goal: Optional[str] = None
-    mindset: Optional[str] = None
-    pace: Optional[str] = None
     lifestyle: Optional[str] = None
     has_dietary_restrictions: Optional[bool] = None
-    dietary: Optional[list[str]] = None
-    conditions: Optional[list[str]] = None
-    custom_condition: Optional[str] = None
+    has_conditions: Optional[bool] = None
+    condition_type: Optional[str] = None
 
 
 class UserCreate(schemas.BaseUserCreate):
@@ -29,13 +26,10 @@ class UserCreate(schemas.BaseUserCreate):
     current_weight_kg: Optional[float] = None
     goal_weight_kg: Optional[float] = None
     goal: Optional[str] = None
-    mindset: Optional[str] = None
-    pace: Optional[str] = None
     lifestyle: Optional[str] = None
     has_dietary_restrictions: Optional[bool] = None
-    dietary: Optional[list[str]] = None
-    conditions: Optional[list[str]] = None
-    custom_condition: Optional[str] = None
+    has_conditions: Optional[bool] = None
+    condition_type: Optional[str] = None
 
 
 class UserUpdate(schemas.BaseUserUpdate):
@@ -46,10 +40,7 @@ class UserUpdate(schemas.BaseUserUpdate):
     current_weight_kg: Optional[float] = None
     goal_weight_kg: Optional[float] = None
     goal: Optional[str] = None
-    mindset: Optional[str] = None
-    pace: Optional[str] = None
     lifestyle: Optional[str] = None
     has_dietary_restrictions: Optional[bool] = None
-    dietary: Optional[list[str]] = None
-    conditions: Optional[list[str]] = None
-    custom_condition: Optional[str] = None
+    has_conditions: Optional[bool] = None
+    condition_type: Optional[str] = None
