@@ -8,9 +8,13 @@ class FoodService:
         self.repo = repo
 
     async def analyze_and_log(
-        self, user_id: str, image_bytes: bytes, image_urls: list[str] | None = None
+        self,
+        user_id: str,
+        image_bytes: bytes,
+        mime_type: str = "image/jpeg",
+        image_urls: list[str] | None = None,
     ) -> FoodLogResponse:
-        analysis = await gemini_service.analyze_food_image(image_bytes)
+        analysis = await gemini_service.analyze_food_image(image_bytes, mime_type)
         log_data = FoodLogCreate(user_id=user_id, image_urls=image_urls or [], analysis=analysis)
         return await self.repo.create(log_data)
 

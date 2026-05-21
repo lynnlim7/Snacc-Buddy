@@ -1,98 +1,81 @@
-import io
 import json
 
-import google.generativeai as genai
-from PIL import Image
+from google import genai
+from google.genai import types
 
 from app.core.config import settings
 from app.schemas.food import GeminiAnalysis
 
 _ANALYSIS_PROMPT = """
-You are a food analysis assistant. 
+You are a food analysis assistant.
 
-Analyze the uploaded food image carefully. 
+Analyze the uploaded food image carefully.
 
-Your primary goal is to identify observable food items and estimate portion sizes as accurately and conservatively as possible. 
+Your primary goal is to identify observable food items and estimate portion sizes as accurately and conservatively as possible.
 
-Focus on: 
-- observable food items 
+Focus on:
+- observable food items
 - estimated quantities
 - preparation methods
 - visible sauces/oils
 - uncertainty handling
 
-DO NOT hallucinate ingredients or quantities that are not visible or strongly implied. 
+DO NOT hallucinate ingredients or quantities that are not visible or strongly implied.
 
 Return ONLY valid JSON.
 
-DO NOT include markdown, explanations or additional text. 
+DO NOT include markdown, explanations or additional text.
 
 Use this exact JSON structure:
 
 {
-  "food_name": [
-  {
-  "name": "food item name",
-    "estimated_quantity": {
-        "value": <float>,
-        "unit": "g | bowl | cup | plate | piece"
-    },
-
-    "preparation_method": "fried | steamed | grilled | roasted | baked | raw | unknown",
-
-    "ingredients": [
-        {
-        "name": "ingredient or component name",
-        "confidence": 0.0
-        }
-    ],
-
-    "visible_sauces_or_oils": true, 
-    
-    "confidence": 0.0, 
-    
-    "possible_alternatives": ["alternative identification if uncertain"]
+  "food_name": "name of the overall meal or dish",
+  "serving_size": "estimated serving size as a string",
+  "preparation_method": "fried | steamed | grilled | roasted | baked | raw | unknown",
+  "ingredients": [
+    {
+      "name": "ingredient or component name",
+      "confidence": 0.0
     }
-    ],
-    "estimated_total_calories": 0,
-    "macros": {
-    "protein_g": <float>,
-    "carbs_g": <float>,
-    "fat_g": <float>,
-    "fiber_g": <float>,
-    "sugar_g": <float>,
-    "sodium_g": <float>,
-    },
-
-    "cuisine_type": "if identifiable otherwise null",
-
-    "restaurant_or_brand": "if recognizable otherwise null",
-
-    "overall_confidence": 0.0,
-
-    "ambiguity_flags":[
+  ],
+  "visible_sauces_or_oils": true,
+  "cuisine_type": "if identifiable otherwise null",
+  "restaurant_or_brand": "if recognizable otherwise null",
+  "estimated_total_calories": 0,
+  "macros": {
+    "protein_g": 0.0,
+    "carbs_g": 0.0,
+    "fat_g": 0.0,
+    "fibre_g": 0.0,
+    "sugar_g": 0.0,
+    "sodium_g": 0.0
+  },
+  "overall_confidence": 0.0,
+  "ambiguity_flags": [
     "hidden_ingredients",
-    "unclear_portion_size",
-    "mixed_food_overlap",
-    "garnish_content_uncertain"
-    ],
-
+    "unclear_portion_size"
+  ],
   "notes": "brief explanation of assumptions or uncertainties"
 }
 
 Base your estimates on visible ingredients, portion size, and typical preparation methods for this dish.
-If multiple foods are visible, analyse the whole meal."""
+If multiple foods are visible, analyse the whole meal as one entry."""
+
 
 class GeminiService:
     def __init__(self) -> None:
-        genai.configure(api_key=settings.GEMINI_API_KEY)
-        self.model = genai.GenerativeModel("gemini-1.5-flash")
+        self._client = genai.Client(api_key=settings.GEMINI_API_KEY)
 
-    async def analyze_food_image(self, image_bytes: bytes) -> GeminiAnalysis:
-        image = Image.open(io.BytesIO(image_bytes))
-        response = await self.model.generate_content_async(
-            [_ANALYSIS_PROMPT, image],
-            generation_config=genai.GenerationConfig(
+    async def analyze_food_image(
+        self, image_bytes: bytes, mime_type: str = "image/jpeg"
+    ) -> GeminiAnalysis:
+        response = await self._client.aio.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=[
+                _ANALYSIS_PROMPT,
+                types.Part.from_bytes(data=image_bytes, mime_type=mime_type),
+            ],
+            config=types.GenerateContentConfig(
                 response_mime_type="application/json",
                 temperature=0.2,
             ),

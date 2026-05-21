@@ -20,6 +20,7 @@ import { PillowButton } from "../components/PillowButton";
 import { colors, fonts, spacing, radius, inputStyle, microcopy } from "../constants/theme";
 import { authApi } from "../services/api";
 import { useAuthStore } from "../stores/authStore";
+import { useUserStore } from "../stores/userStore";
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -30,6 +31,7 @@ export default function LoginScreen() {
   const [error, setError] = useState("");
 
   const setToken = useAuthStore((s) => s.setToken);
+  const setProfile = useUserStore((s) => s.setProfile);
 
   async function handleLogin() {
     setError("");
@@ -37,6 +39,8 @@ export default function LoginScreen() {
     try {
       const token = await authApi.login(email, password);
       setToken(token);
+      const me = await authApi.getMe();
+      setProfile(me);
       router.replace("/(tabs)" as any);
     } catch {
       setError("Invalid email or password.");

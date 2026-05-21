@@ -1,10 +1,16 @@
-from fastapi import FastAPI
+import logging
+from fastapi import FastAPI, Request
+from fastapi.exception_handlers import request_validation_exception_handler
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+
+logger = logging.getLogger("uvicorn.error")
 
 from app.api.routes import analytics, food, image
 from app.core.auth import auth_backend, fastapi_users
 from app.core.config import settings
-from app.schemas.user import UserCreate, UserRead
+from app.schemas.user import UserCreate, UserRead, UserUpdate
 
 app = FastAPI(
     title="Snacc Buddy API",
@@ -35,6 +41,15 @@ app.include_router(
     prefix="/auth",
     tags=["auth"],
 )
+app.include_router(
+    fastapi_users.get_users_router(UserRead, UserUpdate),
+    prefix="/users",
+    tags=["users"],
+)
+
+@app.exception_handler(RequestValidationError)
+async def validation_error_handler(request, exc: RequestValidationError):
+    return await request_validation_exception_handler(request, exec)
 
 app.include_router(food.router, prefix="/api/v1/food", tags=["food"])
 app.include_router(image.router, prefix="/api/v1/food", tags=["food"])

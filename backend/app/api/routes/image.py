@@ -41,4 +41,5 @@ async def analyze_food(
     return await service.analyze_and_log(
         user_id=str(user.id),
         image_bytes=image_bytes,
+        mime_type=image.content_type or "image/jpeg",
     )

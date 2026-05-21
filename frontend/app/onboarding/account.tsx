@@ -15,10 +15,14 @@ import { OnboardingHeader } from "../../components/OnboardingHeader";
 import { colors, fonts, spacing, inputStyle } from "../../constants/theme";
 import { authApi } from "../../services/api";
 import { useAuthStore } from "../../stores/authStore";
+import { useOnboardingStore } from "../../stores/onboardingStore";
+import { useUserStore } from "../../stores/userStore";
 
 export default function AccountScreen() {
   const router = useRouter();
   const setToken = useAuthStore((s) => s.setToken);
+  const setProfile = useUserStore((s) => s.setProfile);
+  const onboarding = useOnboardingStore();
   const [email, setEmail]           = useState("");
   const [password, setPassword]     = useState("");
   const [showPassword, setShow]     = useState(false);
@@ -33,9 +37,26 @@ export default function AccountScreen() {
     setError("");
     setLoading(true);
     try {
-      await authApi.register(email, password);
+      const profile = {
+        name: onboarding.name || null,
+        gender: onboarding.gender || null,
+        age: onboarding.age ? parseInt(onboarding.age, 10) : null,
+        height_cm: onboarding.height ? parseFloat(onboarding.height) : null,
+        current_weight_kg: onboarding.currentWeight ? parseFloat(onboarding.currentWeight) : null,
+        goal_weight_kg: onboarding.goalWeight ? parseFloat(onboarding.goalWeight) : null,
+        goal: onboarding.goal || null,
+        lifestyle: onboarding.lifestyle || null,
+        has_dietary_restrictions: onboarding.hasRestrictions,
+        has_conditions: onboarding.conditions.length > 0,
+        condition_type: onboarding.conditions.length > 0
+          ? [...onboarding.conditions, onboarding.customCondition].filter(Boolean).join(",")
+          : null,
+      };
+      await authApi.register(email, password, profile);
       const token = await authApi.login(email, password);
       setToken(token);
+      const me = await authApi.getMe();
+      setProfile(me);
       router.replace("/onboarding/final-welcome" as any);
     } catch (e: any) {
       const detail = e?.response?.data?.detail;

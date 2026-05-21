@@ -42,6 +42,7 @@ services:
     environment:
       REACT_NATIVE_PACKAGER_HOSTNAME: "192.168.1.12"
       EXPO_PUBLIC_API_URL: "http://192.168.1.12:8000"
+      EXPO_PUBLIC_PLATFORM_MODE: "web"
     depends_on:
       - api
     stdin_open: true

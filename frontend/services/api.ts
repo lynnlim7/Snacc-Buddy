@@ -1,10 +1,10 @@
 import axios from "axios";
+import { config } from "../config";
 import { getToken } from "../stores/authStore";
+import { UserProfile } from "../stores/userStore";
 import { DailySummary, FoodLog, FoodLogList, WeeklySummary } from "../types/food";
 
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:8000";
-
-const client = axios.create({ baseURL: BASE_URL });
+const client = axios.create({ baseURL: config.apiUrl });
 
 client.interceptors.request.use((config) => {
   const token = getToken();
@@ -26,19 +26,35 @@ export const authApi = {
     return data.access_token;
   },
 
-  register: async (email: string, password: string): Promise<void> => {
-    await client.post("/auth/register", { email, password });
+  register: async (
+    email: string,
+    password: string,
+    profile: Partial<Omit<UserProfile, "id" | "email">> = {}
+  ): Promise<void> => {
+    await client.post("/auth/register", { email, password, ...profile });
+  },
+
+  getMe: async (): Promise<UserProfile> => {
+    const { data } = await client.get<UserProfile>("/users/me");
+    return data;
   },
 };
 
 export const foodApi = {
   analyzeImage: async (imageUri: string): Promise<FoodLog> => {
     const form = new FormData();
-    form.append("image", {
-      uri: imageUri,
-      type: "image/jpeg",
-      name: "food.jpg",
-    } as unknown as Blob);
+
+    if (config.platformMode === "web") {
+      const res = await fetch(imageUri);
+      const blob = await res.blob();
+      form.append("image", blob, "food.jpg");
+    } else {
+      form.append("image", {
+        uri: imageUri,
+        type: "image/jpeg",
+        name: "food.jpg",
+      } as unknown as Blob);
+    }
 
     const { data } = await client.post<FoodLog>("/api/v1/food/analyze", form);
     return data;
