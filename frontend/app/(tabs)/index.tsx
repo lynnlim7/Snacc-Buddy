@@ -18,7 +18,6 @@ import {
   TouchableOpacity,
   Dimensions,
   Platform,
-  Alert,
   Image,
   TextInput,
   Animated,
@@ -182,7 +181,7 @@ function MealRow({
   meal: MealEntry;
   date: string;
   onEditPhoto: (photoId: string) => void;
-  onDeletePhoto: (photoId: string, photoName: string) => void;
+  onDeletePhoto: (photoId: string) => void;
 }) {
   const updateMealMood  = useDiaryStore((s) => s.updateMealMood);
   const updateMealNote  = useDiaryStore((s) => s.updateMealNote);
@@ -250,7 +249,7 @@ function MealRow({
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.actionBtn}
-                  onPress={() => onDeletePhoto(photo.id, photo.name)}
+                  onPress={() => onDeletePhoto(photo.id)}
                   hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
                   accessibilityLabel={`Delete ${photo.name}`}
                 >
@@ -385,28 +384,15 @@ export default function DiaryScreen() {
     setModalVisible(true);
   }
 
-  /** Deletes one photo; if it was the last, removes the whole meal */
-  function handleDeletePhoto(mealId: string, photoId: string, photoName: string) {
+  /** Deletes one photo immediately; removes the whole meal if it was the last item */
+  function handleDeletePhoto(mealId: string, photoId: string) {
     const meal = meals.find((m) => m.id === mealId);
     if (!meal) return;
-    const isLast = meal.photos.length === 1;
-    Alert.alert(
-      `Remove "${photoName}"?`,
-      isLast
-        ? "This is the only item — the entire meal entry will be removed."
-        : "This item will be removed from the meal.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Remove",
-          style: "destructive",
-          onPress: () =>
-            isLast
-              ? deleteMeal(today, mealId)
-              : deletePhotoFromMeal(today, mealId, photoId),
-        },
-      ]
-    );
+    if (meal.photos.length === 1) {
+      deleteMeal(today, mealId);
+    } else {
+      deletePhotoFromMeal(today, mealId, photoId);
+    }
   }
 
   return (
@@ -463,8 +449,8 @@ export default function DiaryScreen() {
                   onEditPhoto={(photoId) =>
                     handleEditPhoto(meal.id, photoId, meal.type)
                   }
-                  onDeletePhoto={(photoId, photoName) =>
-                    handleDeletePhoto(meal.id, photoId, photoName)
+                  onDeletePhoto={(photoId) =>
+                    handleDeletePhoto(meal.id, photoId)
                   }
                 />
               ))
