@@ -8,6 +8,7 @@ class Ingredient(BaseModel):
     name: str
     confidence: float | None = None
 
+
 class Quantity(BaseModel):
     value: float
     unit: str
@@ -32,17 +33,48 @@ class GeminiAnalysis(BaseModel):
     visible_sauces_or_oils: bool = False
     cuisine_type: str | None = None
     restaurant_or_brand: str | None = None
-    serving_size: str | None = None
     origin: str | None = None
     estimated_total_calories: int
     macros: MacroNutrients = Field(default_factory=MacroNutrients)
-    confidence: float = Field(ge=0.0, le=1.0)
+    overall_confidence: float = Field(default=0.0, ge=0.0, le=1.0)
     ambiguity_flags: list[str] = []
     notes: str | None = None
 
 
+class FoodLogList(BaseModel):
+    items: list["FoodLogResponse"]
+    total: int
+
+
 class FoodLogCreate(BaseModel):
     user_id: str
-    image_url: str | None = None
+    image_urls: list[str] = []
     analysis: GeminiAnalysis
+
+
+class FoodLogResponse(BaseModel):
+    model_config = {"from_attributes": True}
+
+    id: uuid.UUID
+    user_id: str
+    meal_type: str
+    meal_name: str | None = None
+    ingredients: list
+    serving_size: str | None = None
+    preparation_method: str | None = None
+    estimated_total_calories: int
+    protein_g: float | None = None
+    carbs_g: float | None = None
+    fat_g: float | None = None
+    fibre_g: float | None = None
+    sugar_g: float | None = None
+    sodium_g: float | None = None
+    visible_sauces_or_oils: bool = False
+    cuisine_type: str | None = None
+    restaurant_or_brand: str | None = None
+    confidence: float | None = None
+    ambiguity_flags: list = []
+    notes: str | None = None
+    image_url: list = []
+    created_at: datetime
 

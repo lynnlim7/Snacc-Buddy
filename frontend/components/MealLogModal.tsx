@@ -22,6 +22,7 @@ import {
   MealEntry, MealType, FoodPhoto, NutritionInfo,
   calcDots, DAILY_TARGETS,
 } from "../stores/diaryStore";
+import { foodApi } from "../services/api";
 
 // ─── Types ────────────────────────────────────────────────────
 
@@ -39,31 +40,28 @@ const MEAL_TYPES: MealType[] = [
   "Breakfast", "Lunch", "Dinner", "Snack", "Dessert", "Supper",
 ];
 
-// ─── Mock AI analyser (swap for real API call) ───────────────
+// ─── Real AI analyser ─────────────────────────────────────────
 
-async function analyseImage(_uri: string): Promise<{
+async function analyseImage(uri: string): Promise<{
   name: string;
   nutrition: NutritionInfo;
 }> {
-  // TODO: POST to /api/food/analyse with the image URI
-  await new Promise((r) => setTimeout(r, 1800)); // simulate network
-  const calories = 300 + Math.floor(Math.random() * 300);
-  const protein_g = 8 + Math.floor(Math.random() * 30);
-  const carbs_g   = 20 + Math.floor(Math.random() * 60);
-  const fat_g     = 5 + Math.floor(Math.random() * 20);
-  const fiber_g   = 1 + Math.floor(Math.random() * 10);
+  const log = await foodApi.analyzeImage(uri);
+  const protein_g = log.protein_g ?? 0;
+  const carbs_g   = log.carbs_g   ?? 0;
+  const fat_g     = log.fat_g     ?? 0;
   return {
-    name: "Food item",
+    name: log.food_name,
     nutrition: {
-      calories,
+      calories:    log.calories,
       protein_g,
       carbs_g,
       fat_g,
-      fiber_g,
+      fiber_g:     0,
       proteinDots: calcDots(protein_g, DAILY_TARGETS.protein_g),
       carbsDots:   calcDots(carbs_g,   DAILY_TARGETS.carbs_g),
       fatDots:     calcDots(fat_g,     DAILY_TARGETS.fat_g),
-      fiberDots:   calcDots(fiber_g,   DAILY_TARGETS.fiber_g),
+      fiberDots:   calcDots(0,         DAILY_TARGETS.fiber_g),
     },
   };
 }

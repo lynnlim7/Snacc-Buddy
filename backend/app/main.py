@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import analytics, food
+from app.api.routes import analytics, food, image
 from app.core.auth import auth_backend, fastapi_users
 from app.core.config import settings
 from app.schemas.user import UserCreate, UserRead
@@ -37,6 +37,7 @@ app.include_router(
 )
 
 app.include_router(food.router, prefix="/api/v1/food", tags=["food"])
+app.include_router(image.router, prefix="/api/v1/food", tags=["food"])
 app.include_router(analytics.router, prefix="/api/v1/analytics", tags=["analytics"])
 
 

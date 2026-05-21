@@ -16,18 +16,25 @@ class FoodRepository:
         a = data.analysis
         log = FoodLog(
             user_id=data.user_id,
-            food_name=a.food_name,
+            meal_name=a.food_name,
             ingredients=[i.model_dump() for i in a.ingredients],
             serving_size=a.serving_size,
-            origin=a.origin,
-            calories=a.calories,
+            preparation_method=a.preparation_method,
+            estimated_total_calories=a.estimated_total_calories,
             protein_g=a.macros.protein_g,
             carbs_g=a.macros.carbs_g,
             fat_g=a.macros.fat_g,
-            confidence=a.confidence,
+            fibre_g=a.macros.fibre_g,
+            sugar_g=a.macros.sugar_g,
+            sodium_g=a.macros.sodium_g,
+            visible_sauces_or_oils=a.visible_sauces_or_oils,
+            cuisine_type=a.cuisine_type,
+            restaurant_or_brand=a.restaurant_or_brand,
+            confidence=a.overall_confidence,
+            ambiguity_flags=a.ambiguity_flags,
             notes=a.notes,
             raw_response=a.model_dump(),
-            image_url=data.image_url,
+            image_url=data.image_urls,
         )
         self.db.add(log)
         await self.db.commit()

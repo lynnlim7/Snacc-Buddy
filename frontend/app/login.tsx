@@ -18,6 +18,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { PaperBackground } from "../components/PaperBackground";
 import { PillowButton } from "../components/PillowButton";
 import { colors, fonts, spacing, radius, inputStyle, microcopy } from "../constants/theme";
+import { authApi } from "../services/api";
+import { useAuthStore } from "../stores/authStore";
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -27,15 +29,17 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  const setToken = useAuthStore((s) => s.setToken);
+
   async function handleLogin() {
     setError("");
     setLoading(true);
     try {
-      // TODO: wire up to auth API — skipping validation until backend is ready
-      await new Promise((r) => setTimeout(r, 1200));
+      const token = await authApi.login(email, password);
+      setToken(token);
       router.replace("/(tabs)" as any);
     } catch {
-      setError(microcopy.error);
+      setError("Invalid email or password.");
     } finally {
       setLoading(false);
     }

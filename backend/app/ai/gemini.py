@@ -98,7 +98,7 @@ class GeminiService:
             ),
         )
         data = json.loads(response.text)
-        return GeminiAnalysis(**data)
+        return GeminiAnalysis.model_validate(data)
 
 
 gemini_service = GeminiService()

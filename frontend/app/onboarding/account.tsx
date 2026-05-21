@@ -12,10 +12,13 @@ import { Ionicons } from "@expo/vector-icons";
 import { PaperBackground } from "../../components/PaperBackground";
 import { PillowButton } from "../../components/PillowButton";
 import { OnboardingHeader } from "../../components/OnboardingHeader";
-import { colors, fonts, spacing, inputStyle, microcopy } from "../../constants/theme";
+import { colors, fonts, spacing, inputStyle } from "../../constants/theme";
+import { authApi } from "../../services/api";
+import { useAuthStore } from "../../stores/authStore";
 
 export default function AccountScreen() {
   const router = useRouter();
+  const setToken = useAuthStore((s) => s.setToken);
   const [email, setEmail]           = useState("");
   const [password, setPassword]     = useState("");
   const [showPassword, setShow]     = useState(false);
@@ -30,10 +33,13 @@ export default function AccountScreen() {
     setError("");
     setLoading(true);
     try {
-      await new Promise((r) => setTimeout(r, 1500)); // TODO: wire API
+      await authApi.register(email, password);
+      const token = await authApi.login(email, password);
+      setToken(token);
       router.replace("/onboarding/final-welcome" as any);
-    } catch {
-      setError(microcopy.error);
+    } catch (e: any) {
+      const detail = e?.response?.data?.detail;
+      setError(typeof detail === "string" ? detail : "Registration failed. Try a different email.");
     } finally {
       setLoading(false);
     }
