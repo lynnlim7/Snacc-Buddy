@@ -7,27 +7,81 @@ from PIL import Image
 from app.core.config import settings
 from app.schemas.food import GeminiAnalysis
 
-_ANALYSIS_PROMPT = """Analyze this food image and return nutritional information as JSON.
+_ANALYSIS_PROMPT = """
+You are a food analysis assistant. 
 
-Return ONLY valid JSON with this exact structure — no markdown, no extra text:
+Analyze the uploaded food image carefully. 
+
+Your primary goal is to identify observable food items and estimate portion sizes as accurately and conservatively as possible. 
+
+Focus on: 
+- observable food items 
+- estimated quantities
+- preparation methods
+- visible sauces/oils
+- uncertainty handling
+
+DO NOT hallucinate ingredients or quantities that are not visible or strongly implied. 
+
+Return ONLY valid JSON.
+
+DO NOT include markdown, explanations or additional text. 
+
+Use this exact JSON structure:
+
 {
-  "food_name": "descriptive name of the food or dish",
-  "ingredients": [{"name": "ingredient name", "amount": "estimated amount"}],
-  "serving_size": "estimated serving size (e.g. '1 cup', '200g', '1 plate')",
-  "origin": "cuisine/regional origin if identifiable (e.g. 'Thai', 'Italian') or null",
-  "calories": <integer calorie estimate>,
-  "macros": {
+  "food_name": [
+  {
+  "name": "food item name",
+    "estimated_quantity": {
+        "value": <float>,
+        "unit": "g | bowl | cup | plate | piece"
+    },
+
+    "preparation_method": "fried | steamed | grilled | roasted | baked | raw | unknown",
+
+    "ingredients": [
+        {
+        "name": "ingredient or component name",
+        "confidence": 0.0
+        }
+    ],
+
+    "visible_sauces_or_oils": true, 
+    
+    "confidence": 0.0, 
+    
+    "possible_alternatives": ["alternative identification if uncertain"]
+    }
+    ],
+    "estimated_total_calories": 0,
+    "macros": {
     "protein_g": <float>,
     "carbs_g": <float>,
-    "fat_g": <float>
-  },
-  "confidence": <float between 0 and 1>,
-  "notes": "any relevant notes about the estimate, or null"
+    "fat_g": <float>,
+    "fiber_g": <float>,
+    "sugar_g": <float>,
+    "sodium_g": <float>,
+    },
+
+    "cuisine_type": "if identifiable otherwise null",
+
+    "restaurant_or_brand": "if recognizable otherwise null",
+
+    "overall_confidence": 0.0,
+
+    "ambiguity_flags":[
+    "hidden_ingredients",
+    "unclear_portion_size",
+    "mixed_food_overlap",
+    "garnish_content_uncertain"
+    ],
+
+  "notes": "brief explanation of assumptions or uncertainties"
 }
 
 Base your estimates on visible ingredients, portion size, and typical preparation methods for this dish.
 If multiple foods are visible, analyse the whole meal."""
-
 
 class GeminiService:
     def __init__(self) -> None:
