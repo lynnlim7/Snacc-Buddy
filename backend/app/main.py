@@ -1,26 +1,15 @@
-from contextlib import asynccontextmanager
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routes import analytics, food
 from app.core.auth import auth_backend, fastapi_users
 from app.core.config import settings
-from app.core.database import init_db
 from app.schemas.user import UserCreate, UserRead
-
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    await init_db()
-    yield
-
 
 app = FastAPI(
     title="Snacc Buddy API",
     description="Food calorie tracking via Gemini AI",
     version="0.1.0",
-    lifespan=lifespan,
 )
 
 app.add_middleware(
