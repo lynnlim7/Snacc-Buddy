@@ -1,9 +1,14 @@
+import asyncio
 import json
+from pydantic import ValidationError
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 from google import genai
 from google.genai import types
+from google.genai.errors import ClientError
 
 from app.core.config import settings
+from app.core.exceptions import AIParseError, AIQuotaExceeded, AIRateLimited, AIServiceError, AITimeoutError
 from app.schemas.food import GeminiAnalysis
 
 _ANALYSIS_PROMPT = """
@@ -62,26 +67,74 @@ Base your estimates on visible ingredients, portion size, and typical preparatio
 If multiple foods are visible, analyse the whole meal as one entry."""
 
 
+def _parse_retry_after(e: ClientError) -> float | None:
+    """Extract retry delay seconds from a 429 ClientError response, or None."""
+    try:
+        error_data = e.args[1] if len(e.args) > 1 else {}
+        for d in (error_data or {}).get("error", {}).get("details", []):
+            if "RetryInfo" in d.get("@type", ""):
+                delay_str = d.get("retryDelay", "")
+                if delay_str:
+                    return float(delay_str.rstrip("s"))
+    except Exception:
+        pass
+    return None
+
+
+def _is_daily_quota_exhausted(e: ClientError) -> bool:
+    """True when a PerDay free-tier quota violation is present in the error."""
+    try:
+        error_data = e.args[1] if len(e.args) > 1 else {}
+        for d in (error_data or {}).get("error", {}).get("details", []):
+            for v in d.get("violations", []):
+                if "PerDay" in v.get("quotaId", ""):
+                    return True
+    except Exception:
+        pass
+    return False
+
+
 class GeminiService:
     def __init__(self) -> None:
         self._client = genai.Client(api_key=settings.GEMINI_API_KEY)
 
+    # Retries only AIRateLimited (per-minute cap) — not AIQuotaExceeded (daily limit).
+    @retry(
+        retry=retry_if_exception_type(AIRateLimited),
+        wait=wait_exponential(multiplier=1, min=4, max=30),
+        stop=stop_after_attempt(3),
+        reraise=True,
+    )
     async def analyze_food_image(
         self, image_bytes: bytes, mime_type: str = "image/jpeg"
     ) -> GeminiAnalysis:
-        response = await self._client.aio.models.generate_content(
-            model="gemini-2.0-flash",
-            contents=[
-                _ANALYSIS_PROMPT,
-                types.Part.from_bytes(data=image_bytes, mime_type=mime_type),
-            ],
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json",
-                temperature=0.2,
-            ),
-        )
-        data = json.loads(response.text)
-        return GeminiAnalysis.model_validate(data)
+        try:
+            response = await asyncio.wait_for(
+                self._client.aio.models.generate_content(
+                    model=settings.GEMINI_MODEL,
+                    contents=[
+                        _ANALYSIS_PROMPT,
+                        types.Part.from_bytes(data=image_bytes, mime_type=mime_type),
+                    ],
+                    config=types.GenerateContentConfig(
+                        response_mime_type="application/json",
+                        temperature=settings.GEMINI_TEMPERATURE,
+                    ),
+                ),
+                timeout=settings.GEMINI_TIMEOUT_SECONDS,
+            )
+            data = json.loads(response.text)
+            return GeminiAnalysis.model_validate(data)
+        except asyncio.TimeoutError as e:
+            raise AITimeoutError() from e
+        except ClientError as e:
+            if e.code == 429:
+                if _is_daily_quota_exhausted(e):
+                    raise AIQuotaExceeded() from e
+                raise AIRateLimited(_parse_retry_after(e) or 10.0) from e
+            raise AIServiceError(str(e)) from e
+        except (json.JSONDecodeError, ValidationError) as e:
+            raise AIParseError(str(e)) from e
 
 
 gemini_service = GeminiService()

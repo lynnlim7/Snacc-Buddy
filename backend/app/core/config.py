@@ -7,6 +7,16 @@ class Settings(BaseSettings):
 
     DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/snacc_buddy"
     GEMINI_API_KEY: str = ""
+    GEMINI_MODEL: str = "gemini-1.5-flash"
+    GEMINI_TEMPERATURE: float = 0.2
+    GEMINI_TIMEOUT_SECONDS: float = 30.0
+
+    REDIS_URL: str = "redis://localhost:6379"
+    GEMINI_CACHE_TTL_SECONDS: int = 86400   # 24 h — same meal, same calories
+    GEMINI_DEDUP_TTL_SECONDS: int = 60       # lock held while Gemini processes
+    AI_RATE_LIMIT_REQUESTS: int = 10
+    AI_RATE_LIMIT_WINDOW_SECONDS: int = 60 * 60
+
     CORS_ORIGINS: list[str] = ["http://localhost:8081", "exp://localhost:8081"]
     MAX_IMAGE_SIZE_MB: int = 10
 
