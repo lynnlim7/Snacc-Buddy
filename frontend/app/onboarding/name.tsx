@@ -28,6 +28,13 @@ export default function NameScreen() {
   return (
     <PaperBackground>
       <SafeAreaView style={styles.safe}>
+        <TouchableOpacity
+          style={styles.back}
+          onPress={() => router.back()}
+          accessibilityLabel="Go back"
+        >
+          <Ionicons name="arrow-back" size={22} color={colors.textMuted} />
+        </TouchableOpacity>
         <KeyboardAvoidingView
           style={styles.kav}
           behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -86,6 +93,7 @@ export default function NameScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
+  back: { padding: spacing.md },
   kav: { flex: 1 },
   content: {
     flex: 1,

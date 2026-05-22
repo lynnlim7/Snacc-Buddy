@@ -28,6 +28,7 @@ export default function AccountScreen() {
   const [showPassword, setShow]     = useState(false);
   const [loading, setLoading]       = useState(false);
   const [error, setError]           = useState("");
+  const [alreadyExists, setAlreadyExists] = useState(false);
 
   const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   const canSubmit  = emailValid && password.length >= 8;
@@ -35,6 +36,7 @@ export default function AccountScreen() {
   async function handleCreate() {
     if (!canSubmit) return;
     setError("");
+    setAlreadyExists(false);
     setLoading(true);
     try {
       const profile = {
@@ -60,7 +62,12 @@ export default function AccountScreen() {
       router.replace("/onboarding/final-welcome" as any);
     } catch (e: any) {
       const detail = e?.response?.data?.detail;
-      setError(typeof detail === "string" ? detail : "Registration failed. Try a different email.");
+      if (detail === "REGISTER_USER_ALREADY_EXISTS") {
+        setError("An account with this email already exists.");
+        setAlreadyExists(true);
+      } else {
+        setError(typeof detail === "string" ? detail : "Registration failed. Try a different email.");
+      }
     } finally {
       setLoading(false);
     }
@@ -115,10 +122,17 @@ export default function AccountScreen() {
                 </TouchableOpacity>
               </View>
 
-              {error ? <Text style={styles.error}>{error}</Text> : null}
+              {error ? (
+                <View style={styles.errorBlock}>
+                  <Text style={styles.error}>{error}</Text>
+                  {alreadyExists && (
+                    <TouchableOpacity onPress={() => router.push("/login" as any)} accessibilityRole="button">
+                      <Text style={styles.loginLink}>Log in instead</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              ) : null}
             </View>
-
-            <Text style={styles.hint}>Your diary is always yours. No spam, ever.</Text>
           </View>
 
           <View style={styles.footer}>
@@ -146,7 +160,9 @@ const styles = StyleSheet.create({
   inputText: { fontFamily: fonts.body400, fontSize: 15, color: colors.text },
   passwordRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
   eyeBtn: { padding: spacing.sm },
+  errorBlock: { alignItems: "center", gap: spacing.xs },
   error: { fontFamily: fonts.body400, fontSize: 13, color: colors.error, textAlign: "center" },
+  loginLink: { fontFamily: fonts.body700, fontSize: 13, color: colors.softPink, textDecorationLine: "underline" },
   hint: { fontFamily: fonts.body400, fontSize: 13, color: colors.textMuted },
   footer: { paddingHorizontal: spacing.xl, paddingBottom: spacing.xl },
 });
