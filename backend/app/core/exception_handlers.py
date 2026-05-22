@@ -1,7 +1,11 @@
+import logging
+
 from fastapi import FastAPI, Request
 from fastapi.exception_handlers import request_validation_exception_handler
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+
+logger = logging.getLogger(__name__)
 
 from app.core.exceptions import (
     AIDuplicateRequest,
@@ -48,7 +52,8 @@ def register_exception_handlers(app: FastAPI) -> None:
         )
 
     @app.exception_handler(AIServiceError)
-    async def ai_service_error_handler(_request: Request, _exc: AIServiceError):
+    async def ai_service_error_handler(_request: Request, exc: AIServiceError):
+        logger.error("AIServiceError: %s", exc, exc_info=exc.__cause__)
         return JSONResponse(
             status_code=502,
             content={"detail": "AI analysis failed. Please try again."},

@@ -70,8 +70,7 @@ If multiple foods are visible, analyse the whole meal as one entry."""
 def _parse_retry_after(e: ClientError) -> float | None:
     """Extract retry delay seconds from a 429 ClientError response, or None."""
     try:
-        error_data = e.args[1] if len(e.args) > 1 else {}
-        for d in (error_data or {}).get("error", {}).get("details", []):
+        for d in (e.details or {}).get("error", {}).get("details", []):
             if "RetryInfo" in d.get("@type", ""):
                 delay_str = d.get("retryDelay", "")
                 if delay_str:
@@ -84,8 +83,7 @@ def _parse_retry_after(e: ClientError) -> float | None:
 def _is_daily_quota_exhausted(e: ClientError) -> bool:
     """True when a PerDay free-tier quota violation is present in the error."""
     try:
-        error_data = e.args[1] if len(e.args) > 1 else {}
-        for d in (error_data or {}).get("error", {}).get("details", []):
+        for d in (e.details or {}).get("error", {}).get("details", []):
             for v in d.get("violations", []):
                 if "PerDay" in v.get("quotaId", ""):
                     return True

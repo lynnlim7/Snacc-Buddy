@@ -1,6 +1,9 @@
 import hashlib
+import logging
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+
+logger = logging.getLogger(__name__)
 from fastapi_limiter.depends import RateLimiter
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -27,13 +30,14 @@ def get_food_service(db: AsyncSession = Depends(get_db)) -> FoodService:
     "/analyze",
     response_model=FoodLogResponse,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(RateLimiter(times=settings.AI_RATE_LIMIT_REQUESTS, hours=settings.RATE_LIMIT_HOURS))],
+    dependencies=[Depends(RateLimiter(times=settings.AI_RATE_LIMIT_REQUESTS, seconds=settings.AI_RATE_LIMIT_WINDOW_SECONDS))],
 )
 async def analyze_food(
     image: UploadFile = File(...),
     user: User = Depends(current_active_user),
     service: FoodService = Depends(get_food_service),
 ):
+    logger.info("analyze_food entered for user=%s content_type=%s", user.id, image.content_type)
     if image.content_type not in ALLOWED_CONTENT_TYPES:
         raise HTTPException(
             status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
