@@ -57,4 +57,4 @@ async def run_async_migrations() -> None:
 if context.is_offline_mode():
     ...
 else:
-    run_migrations_online()
+    asyncio.run(run_async_migrations())

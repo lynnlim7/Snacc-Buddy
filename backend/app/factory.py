@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi_limiter import FastAPILimiter
 
-from app.api.routes import analytics, food, image
+from app.api.routes import analyze, analytics, food
 from app.core.auth import auth_backend, fastapi_users
 from app.core.config import settings
 from app.core.exception_handlers import register_exception_handlers
@@ -44,8 +44,8 @@ def create_app() -> FastAPI:
     app.include_router(fastapi_users.get_register_router(UserRead, UserCreate), prefix="/auth", tags=["auth"])
     app.include_router(fastapi_users.get_reset_password_router(), prefix="/auth", tags=["auth"])
     app.include_router(fastapi_users.get_users_router(UserRead, UserUpdate), prefix="/users", tags=["users"])
+    app.include_router(analyze.router, prefix="/api/v1/food", tags=["food"])
     app.include_router(food.router, prefix="/api/v1/food", tags=["food"])
-    app.include_router(image.router, prefix="/api/v1/food", tags=["food"])
     app.include_router(analytics.router, prefix="/api/v1/analytics", tags=["analytics"])
 
     register_exception_handlers(app)

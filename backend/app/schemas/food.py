@@ -48,8 +48,26 @@ class FoodLogList(BaseModel):
 
 class FoodLogCreate(BaseModel):
     user_id: str
+    meal_type: str
     image_urls: list[str] = []
     analysis: GeminiAnalysis
+
+
+class FoodLogConfirm(BaseModel):
+    meal_type: str
+    image_urls: list[str] = []
+    analysis: GeminiAnalysis
+
+
+class FoodLogUpdate(BaseModel):
+    meal_type: str | None = None
+    meal_name: str | None = None
+    serving_size: str | None = None
+    estimated_total_calories: int | None = None
+    protein_g: float | None = None
+    carbs_g: float | None = None
+    fat_g: float | None = None
+    notes: str | None = None
 
 
 class FoodLogResponse(BaseModel):

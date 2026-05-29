@@ -5,7 +5,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.food_log import FoodLog
-from app.schemas.food import FoodLogCreate, FoodLogResponse
+from app.schemas.food import FoodLogCreate, FoodLogResponse, FoodLogUpdate
 
 
 class FoodRepository:
@@ -16,6 +16,7 @@ class FoodRepository:
         a = data.analysis
         log = FoodLog(
             user_id=data.user_id,
+            meal_type=data.meal_type,
             meal_name=a.food_name,
             ingredients=[i.model_dump() for i in a.ingredients],
             serving_size=a.serving_size,
@@ -44,7 +45,9 @@ class FoodRepository:
     async def get_by_user(
         self, user_id: str, limit: int = 20, offset: int = 0
     ) -> tuple[list[FoodLogResponse], int]:
-        count_q = select(func.count()).select_from(FoodLog).where(FoodLog.user_id == user_id)
+        count_q = (
+            select(func.count()).select_from(FoodLog).where(FoodLog.user_id == user_id)
+        )
         total = (await self.db.execute(count_q)).scalar_one()
 
         q = (
@@ -65,13 +68,43 @@ class FoodRepository:
         row = (await self.db.execute(q)).scalar_one_or_none()
         return FoodLogResponse.model_validate(row) if row else None
 
+    async def update(
+        self, log_id: str, user_id: str, data: FoodLogUpdate
+    ) -> FoodLogResponse | None:
+        q = select(FoodLog).where(
+            FoodLog.id == uuid.UUID(log_id),
+            FoodLog.user_id == user_id,
+        )
+        log = (await self.db.execute(q)).scalar_one_or_none()
+        if not log:
+            return None
+        for field, value in data.model_dump(exclude_none=True).items():
+            setattr(log, field, value)
+        await self.db.commit()
+        await self.db.refresh(log)
+        return FoodLogResponse.model_validate(log)
+
+    async def delete(self, log_id: str, user_id: str) -> bool:
+        q = select(FoodLog).where(
+            FoodLog.id == uuid.UUID(log_id),
+            FoodLog.user_id == user_id,
+        )
+        log = (await self.db.execute(q)).scalar_one_or_none()
+        if not log:
+            return False
+        await self.db.delete(log)
+        await self.db.commit()
+        return True
+
     async def get_daily_summary(self, user_id: str, target_date: date) -> dict:
         q = select(
-            func.coalesce(func.sum(FoodLog.calories), 0).label("total_calories"),
+            func.coalesce(func.sum(FoodLog.estimated_total_calories), 0).label(
+                "total_calories"
+            ),
             func.coalesce(func.sum(FoodLog.protein_g), 0.0).label("total_protein"),
             func.coalesce(func.sum(FoodLog.carbs_g), 0.0).label("total_carbs"),
             func.coalesce(func.sum(FoodLog.fat_g), 0.0).label("total_fat"),
-            func.count().label("meal_count"),
+            func.count(FoodLog.id).label("meal_count"),
         ).where(
             FoodLog.user_id == user_id,
             func.date(FoodLog.created_at) == target_date,
