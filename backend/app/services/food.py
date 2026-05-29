@@ -1,4 +1,4 @@
-from app.ai.gemini import gemini_service
+from app.prompt.gemini import gemini_service
 from app.repositories.food import FoodRepository
 from app.schemas.food import FoodLogCreate, FoodLogResponse, GeminiAnalysis
 

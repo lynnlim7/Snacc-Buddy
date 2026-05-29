@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 from fastapi_limiter.depends import RateLimiter
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.ai.gemini import gemini_service
+from app.prompt.gemini import gemini_service
 from app.core.auth import current_active_user
 from app.core.config import settings
 from app.core.database import get_db
