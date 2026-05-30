@@ -15,17 +15,3 @@ mail_config = ConnectionConfig(
     VALIDATE_CERTS=True
 )
 
-async def send_password_reset_email(email:str, reset_link:str):
-    message = MessageSchema(
-        subject="Reset your Snacc Buddy password",
-        recipients=[email],
-        body=f"""
-        <p>Hello,</p>
-        <p>Click the link below to reset your password:</p>
-        <p><a href="{reset_link}">Reset password</a></p>
-        """,
-        subtype=MessageType.html,
-    )
-
-    fm = FastMail(mail_config)
-    await fm.send_message(message)

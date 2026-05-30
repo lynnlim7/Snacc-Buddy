@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     MAX_IMAGE_SIZE_MB: int = 10
 
     JWT_SECRET: str = "change-me-jwt-secret"
+    JWT_LIFETIME_SECONDS: int = 3600
     RESET_PASSWORD_TOKEN_SECRET: str = "change-me-reset-password-secret"
     VERIFICATION_TOKEN_SECRET: str = "change-me-verification-secret"
 

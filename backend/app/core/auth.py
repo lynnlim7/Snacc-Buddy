@@ -7,13 +7,17 @@ from app.core.config import settings
 from app.core.user_manager import get_user_manager
 from app.models.user import User
 
+# transport handler
 bearer_transport = BearerTransport(tokenUrl="/auth/jwt/login")
 
-
+# token generation
 def get_jwt_strategy() -> JWTStrategy:
-    return JWTStrategy(secret=settings.JWT_SECRET, lifetime_seconds=3600)
+    return JWTStrategy(
+        secret=settings.JWT_SECRET, 
+        lifetime_seconds=settings.JWT_LIFETIME_SECONDS
+        )
 
-
+# authentication workflow handler
 auth_backend = AuthenticationBackend(
     name="jwt",
     transport=bearer_transport,
@@ -25,4 +29,9 @@ fastapi_users = FastAPIUsers[User, uuid.UUID](
     [auth_backend],
 )
 
-current_active_user = fastapi_users.current_user(active=True)
+current_admin_user = (
+    fastapi_users.current_user(
+        active=True, 
+        superuser=True
+    )
+)

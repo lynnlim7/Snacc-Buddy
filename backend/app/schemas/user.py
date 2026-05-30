@@ -13,8 +13,8 @@ class UserRead(schemas.BaseUser[uuid.UUID]):
     goal_weight_kg: Optional[float] = None
     goal: Optional[str] = None
     lifestyle: Optional[str] = None
-    has_dietary_restrictions: Optional[bool] = None
-    has_conditions: Optional[bool] = None
+    dietary_restrictions: Optional[bool] = None
+    medical_conditions: Optional[bool] = None
     condition_type: Optional[str] = None
 
 
@@ -27,8 +27,8 @@ class UserCreate(schemas.BaseUserCreate):
     goal_weight_kg: Optional[float] = None
     goal: Optional[str] = None
     lifestyle: Optional[str] = None
-    has_dietary_restrictions: Optional[bool] = None
-    has_conditions: Optional[bool] = None
+    dietary_restrictions: Optional[bool] = None
+    medical_conditions: Optional[bool] = None
     condition_type: Optional[str] = None
 
 
@@ -41,6 +41,6 @@ class UserUpdate(schemas.BaseUserUpdate):
     goal_weight_kg: Optional[float] = None
     goal: Optional[str] = None
     lifestyle: Optional[str] = None
-    has_dietary_restrictions: Optional[bool] = None
-    has_conditions: Optional[bool] = None
+    dietary_restrictions: Optional[bool] = None
+    medical_conditions: Optional[bool] = None
     condition_type: Optional[str] = None
