@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi_limiter import FastAPILimiter
 
 from app.api.routes import analyze, analytics, food
+from app.ai_governance.api.router import governance_router
 from app.core.auth import auth_backend, fastapi_users
 from app.core.config import settings
 from app.core.exception_handlers import register_exception_handlers
@@ -47,6 +48,7 @@ def create_app() -> FastAPI:
     app.include_router(analyze.router, prefix="/api/v1/food", tags=["food"])
     app.include_router(food.router, prefix="/api/v1/food", tags=["food"])
     app.include_router(analytics.router, prefix="/api/v1/analytics", tags=["analytics"])
+    app.include_router(governance_router)
 
     register_exception_handlers(app)
 

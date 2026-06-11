@@ -51,12 +51,14 @@ class FoodLogCreate(BaseModel):
     meal_type: str
     image_urls: list[str] = []
     analysis: GeminiAnalysis
+    inference_log_id: uuid.UUID | None = None
 
 
 class FoodLogConfirm(BaseModel):
     meal_type: str
     image_urls: list[str] = []
     analysis: GeminiAnalysis
+    inference_log_id: uuid.UUID | None = None
 
 
 class FoodLogUpdate(BaseModel):
@@ -94,5 +96,6 @@ class FoodLogResponse(BaseModel):
     ambiguity_flags: list = []
     notes: str | None = None
     image_url: list = []
+    inference_log_id: uuid.UUID | None = None
     created_at: datetime
 

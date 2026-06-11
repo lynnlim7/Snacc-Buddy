@@ -36,6 +36,7 @@ class FoodRepository:
             notes=a.notes,
             raw_response=a.model_dump(),
             image_url=data.image_urls,
+            inference_log_id=data.inference_log_id,
         )
         self.db.add(log)
         await self.db.commit()

@@ -28,8 +28,12 @@ dev = [
     "black>=26.3.1",
     "ipython>=8.39.0",
     "pytest>=9.0.3",
+    "pytest-asyncio>=1.0.0",
     "ruff>=0.15.12",
 ]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
 
 [tool.ruff.lint]
 select = ["E", "F", "I"]

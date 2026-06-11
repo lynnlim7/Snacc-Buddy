@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Float, Integer, String, Text, func
+from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -35,6 +35,13 @@ class FoodLog(Base):
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     raw_response: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     image_url: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    # Governance cross-domain link — nullable; SET NULL if inference log is ever purged
+    inference_log_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("ai_inference_logs.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),

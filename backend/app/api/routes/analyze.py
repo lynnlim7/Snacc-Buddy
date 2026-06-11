@@ -11,6 +11,10 @@ from app.models.user import User
 from app.repositories.food import FoodRepository
 from app.schemas.food import GeminiAnalysis
 from app.services.food import FoodService
+from app.ai_governance.api.deps import get_inference_audit_service
+from app.ai_governance.repositories.model_registry import ModelRegistryRepository
+from app.ai_governance.repositories.prompt_registry import PromptRegistryRepository
+from app.ai_governance.services.inference_audit import InferenceAuditService
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -38,13 +42,17 @@ async def analyze_food_image(
     image: UploadFile = File(...),
     user: User = Depends(current_active_user),
     service: FoodService = Depends(get_food_service),
+    audit_service: InferenceAuditService = Depends(get_inference_audit_service),
+    db: AsyncSession = Depends(get_db),
 ) -> GeminiAnalysis:
-    logger.info("analyze_food_image user=%s content_type=%s", user.id, image.content_type)
+    logger.info(
+        "analyze_food_image user=%s content_type=%s", user.id, image.content_type
+    )
 
     if image.content_type not in ALLOWED_CONTENT_TYPES:
         raise HTTPException(
             status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
-            detail=f"Unsupported file type. Allowed: jpeg, png, webp.",
+            detail="Unsupported file type. Allowed: jpeg, png, webp.",
         )
 
     image_bytes = await image.read()
@@ -55,4 +63,35 @@ async def analyze_food_image(
             detail=f"Image exceeds {settings.MAX_IMAGE_SIZE_MB} MB limit.",
         )
 
-    return await service.analyze_image(image_bytes, image.content_type or "image/jpeg")
+    # Resolve default model and active prompt from governance registry
+    model_repo = ModelRegistryRepository(db)
+    prompt_repo = PromptRegistryRepository(db)
+
+    default_model = await model_repo.get_default_model()
+    if not default_model:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=(
+                "No default AI model is configured. "
+                "Register and activate a model via /api/v1/governance/models."
+            ),
+        )
+
+    active_prompt = await prompt_repo.get_active_prompt_for_model(default_model.id)
+    if not active_prompt:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=(
+                "No active prompt is configured for the default model. "
+                "Activate a prompt version via /api/v1/governance/prompts."
+            ),
+        )
+
+    analysis, _inference_log_id = await service.analyze_image(
+        image_bytes=image_bytes,
+        mime_type=image.content_type or "image/jpeg",
+        audit_service=audit_service,
+        model_id=default_model.id,
+        prompt_version_id=active_prompt.id,
+    )
+    return analysis
