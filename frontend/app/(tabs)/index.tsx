@@ -11,6 +11,7 @@
  */
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import {
+  Alert,
   ScrollView,
   StyleSheet,
   Text,
@@ -459,14 +460,23 @@ export default function DiaryScreen() {
     setModalVisible(true);
   }
 
-  /** Deletes one photo immediately; removes the whole meal if it was the last item */
-  function handleDeletePhoto(mealId: string, photoId: string) {
+  /** Deletes one photo and its backend log; removes the whole meal if it was the last item */
+  async function handleDeletePhoto(mealId: string, photoId: string) {
     const meal = meals.find((m) => m.id === mealId);
     if (!meal) return;
-    if (meal.photos.length === 1) {
-      deleteMeal(selectedDate, mealId);
-    } else {
-      deletePhotoFromMeal(selectedDate, mealId, photoId);
+    const logId = meal.photos.length === 1 ? mealId : photoId;
+    try {
+      await foodApi.deleteLog(logId);
+      if (meal.photos.length === 1) {
+        deleteMeal(selectedDate, mealId);
+      } else {
+        deletePhotoFromMeal(selectedDate, mealId, photoId);
+      }
+      foodApi.getDailySummary(selectedDate)
+        .then((s) => setDailyCalories(s.total_calories))
+        .catch(() => {});
+    } catch {
+      Alert.alert("Couldn't delete", "Check your connection and try again.");
     }
   }
 

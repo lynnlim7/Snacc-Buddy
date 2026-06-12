@@ -38,6 +38,13 @@ export const authApi = {
     const { data } = await client.get<UserProfile>("/users/me");
     return data;
   },
+
+  updateProfile: async (
+    updates: Partial<Omit<UserProfile, "id" | "email">>
+  ): Promise<UserProfile> => {
+    const { data } = await client.patch<UserProfile>("/users/me", updates);
+    return data;
+  },
 };
 
 export const foodApi = {
@@ -97,6 +104,10 @@ export const foodApi = {
   getStreak: async (): Promise<number> => {
     const { data } = await client.get<{ streak: number }>("/api/v1/analytics/streak");
     return data.streak;
+  },
+
+  deleteLog: async (logId: string): Promise<void> => {
+    await client.delete(`/api/v1/food/logs/${logId}`);
   },
 
   refineAnalysis: async (payload: {

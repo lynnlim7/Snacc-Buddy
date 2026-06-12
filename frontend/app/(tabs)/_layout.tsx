@@ -57,6 +57,13 @@ export default function TabLayout() {
           tabBarIcon: ({ focused }) => <TabIcon name="trending-up-outline" focused={focused} />,
         }}
       />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: "You",
+          tabBarIcon: ({ focused }) => <TabIcon name="person-outline" focused={focused} />,
+        }}
+      />
     </Tabs>
   );
 }
