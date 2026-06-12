@@ -23,6 +23,7 @@ import {
   calcDots, DAILY_TARGETS,
 } from "../stores/diaryStore";
 import { foodApi } from "../services/api";
+import { GeminiAnalysis } from "../types/food";
 
 // ─── Types ────────────────────────────────────────────────────
 
@@ -46,6 +47,7 @@ async function analyseImage(uri: string): Promise<{
   name: string;
   nutrition: NutritionInfo;
   inferenceLogId: string;
+  analysis: GeminiAnalysis;
 }> {
   const response = await foodApi.analyzeImage(uri);
   const a = response.analysis;
@@ -55,6 +57,7 @@ async function analyseImage(uri: string): Promise<{
   const fiber_g   = a.macros.fibre_g   ?? 0;
   return {
     inferenceLogId: response.inference_log_id,
+    analysis: a,
     name: a.food_name,
     nutrition: {
       calories:    a.estimated_total_calories,
@@ -79,6 +82,8 @@ export function MealLogModal({ visible, onClose, onSave, prefillType }: Props) {
   const [result, setResult]         = useState<{ name: string; nutrition: NutritionInfo } | null>(null);
   const [editName, setEditName]     = useState("");
   const [inferenceLogId, setInferenceLogId] = useState<string | null>(null);
+  const [currentAnalysis, setCurrentAnalysis] = useState<GeminiAnalysis | null>(null);
+  const [saving, setSaving]         = useState(false);
 
   function reset() {
     setStep("type");
@@ -87,6 +92,8 @@ export function MealLogModal({ visible, onClose, onSave, prefillType }: Props) {
     setResult(null);
     setEditName("");
     setInferenceLogId(null);
+    setCurrentAnalysis(null);
+    setSaving(false);
   }
 
   function handleClose() {
@@ -120,6 +127,7 @@ export function MealLogModal({ visible, onClose, onSave, prefillType }: Props) {
     try {
       const analysis = await analyseImage(uri);
       setInferenceLogId(analysis.inferenceLogId);
+      setCurrentAnalysis(analysis.analysis);
       setResult({ name: analysis.name, nutrition: analysis.nutrition });
       setEditName(analysis.name);
       setStep("results");
@@ -129,24 +137,36 @@ export function MealLogModal({ visible, onClose, onSave, prefillType }: Props) {
     }
   }
 
-  function handleConfirm() {
-    if (!mealType || !result || !imageUri) return;
-    const photo: FoodPhoto = {
-      id: Date.now().toString(),
-      uri: imageUri,
-      name: editName || result.name,
-      nutrition: result.nutrition,
-    };
-    const meal: MealEntry = {
-      id: Date.now().toString(),
-      type: mealType,
-      photos: [photo],
-      totalCalories: result.nutrition.calories,
-      mood: [],
-      note: "",
-    };
-    onSave(meal);
-    reset();
+  async function handleConfirm() {
+    if (!mealType || !result || !imageUri || !currentAnalysis) return;
+    setSaving(true);
+    try {
+      await foodApi.confirmLog({
+        meal_type: mealType.toLowerCase(),
+        image_urls: [],
+        analysis: { ...currentAnalysis, food_name: editName || currentAnalysis.food_name },
+        inference_log_id: inferenceLogId ?? undefined,
+      });
+      const photo: FoodPhoto = {
+        id: Date.now().toString(),
+        uri: imageUri,
+        name: editName || result.name,
+        nutrition: result.nutrition,
+      };
+      const meal: MealEntry = {
+        id: Date.now().toString(),
+        type: mealType,
+        photos: [photo],
+        totalCalories: result.nutrition.calories,
+        mood: [],
+        note: "",
+      };
+      onSave(meal);
+      reset();
+    } catch {
+      Alert.alert("Couldn't save", "Check your connection and try again");
+      setSaving(false);
+    }
   }
 
   return (
@@ -189,6 +209,7 @@ export function MealLogModal({ visible, onClose, onSave, prefillType }: Props) {
                 onEditName={setEditName}
                 onConfirm={handleConfirm}
                 onBack={() => setStep("type")}
+                saving={saving}
               />
             )}
           </View>
@@ -310,7 +331,7 @@ function AnalyzingStep() {
 
 function ResultsStep({
   mealType, result, imageUri,
-  editName, onEditName, onConfirm, onBack,
+  editName, onEditName, onConfirm, onBack, saving,
 }: {
   mealType: MealType;
   result: { name: string; nutrition: NutritionInfo };
@@ -319,6 +340,7 @@ function ResultsStep({
   onEditName: (s: string) => void;
   onConfirm: () => void;
   onBack: () => void;
+  saving: boolean;
 }) {
   const n = result.nutrition;
 
@@ -360,8 +382,16 @@ function ResultsStep({
       </View>
 
       {/* Confirm button */}
-      <TouchableOpacity style={styles.confirmBtn} onPress={onConfirm} accessibilityRole="button">
-        <Text style={styles.confirmBtnText}>Add to diary</Text>
+      <TouchableOpacity
+        style={[styles.confirmBtn, saving && styles.confirmBtnSaving]}
+        onPress={onConfirm}
+        disabled={saving}
+        accessibilityRole="button"
+      >
+        {saving
+          ? <ActivityIndicator color={colors.text} />
+          : <Text style={styles.confirmBtnText}>Add to diary</Text>
+        }
       </TouchableOpacity>
     </ScrollView>
   );
@@ -667,6 +697,9 @@ const styles = StyleSheet.create({
     borderColor: colors.softPinkBorder,
     paddingVertical: 16,
     alignItems: "center",
+  },
+  confirmBtnSaving: {
+    opacity: 0.6,
   },
   confirmBtnText: {
     fontFamily: fonts.heading700,
