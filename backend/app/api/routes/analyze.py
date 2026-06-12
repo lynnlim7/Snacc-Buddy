@@ -9,7 +9,7 @@ from app.core.config import settings
 from app.core.database import get_db
 from app.models.user import User
 from app.repositories.food import FoodRepository
-from app.schemas.food import GeminiAnalysis
+from app.schemas.food import AnalyzeResponse, GeminiAnalysis
 from app.services.food import FoodService
 from app.ai_governance.api.deps import get_inference_audit_service
 from app.ai_governance.repositories.model_registry import ModelRegistryRepository
@@ -28,7 +28,7 @@ def get_food_service(db: AsyncSession = Depends(get_db)) -> FoodService:
 
 @router.post(
     "/analyze",
-    response_model=GeminiAnalysis,
+    response_model=AnalyzeResponse,
     dependencies=[
         Depends(
             RateLimiter(
@@ -44,7 +44,7 @@ async def analyze_food_image(
     service: FoodService = Depends(get_food_service),
     audit_service: InferenceAuditService = Depends(get_inference_audit_service),
     db: AsyncSession = Depends(get_db),
-) -> GeminiAnalysis:
+) -> AnalyzeResponse:
     logger.info(
         "analyze_food_image user=%s content_type=%s", user.id, image.content_type
     )
@@ -87,11 +87,11 @@ async def analyze_food_image(
             ),
         )
 
-    analysis, _inference_log_id = await service.analyze_image(
+    analysis, inference_log_id = await service.analyze_image(
         image_bytes=image_bytes,
         mime_type=image.content_type or "image/jpeg",
         audit_service=audit_service,
         model_id=default_model.id,
         prompt_version_id=active_prompt.id,
     )
-    return analysis
+    return AnalyzeResponse(analysis=analysis, inference_log_id=inference_log_id)

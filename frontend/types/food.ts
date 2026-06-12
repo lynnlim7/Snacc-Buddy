@@ -26,8 +26,42 @@ export interface FoodLog {
   created_at: string;
 }
 
+export interface GeminiAnalysis {
+  food_name: string;
+  estimated_total_calories: number;
+  macros: {
+    protein_g: number | null;
+    carbs_g: number | null;
+    fat_g: number | null;
+    fibre_g: number | null;
+  };
+  ambiguity_flags: string[];
+  overall_confidence: number;
+  notes: string | null;
+}
+
+export interface AnalyzeResponse {
+  analysis: GeminiAnalysis;
+  inference_log_id: string;
+}
+
+export interface FoodLogResponse {
+  id: string;
+  user_id: string;
+  meal_type: string;
+  meal_name: string | null;
+  estimated_total_calories: number;
+  protein_g: number | null;
+  carbs_g: number | null;
+  fat_g: number | null;
+  fibre_g: number | null;
+  image_url: string[] | null;
+  inference_log_id: string | null;
+  created_at: string;
+}
+
 export interface FoodLogList {
-  items: FoodLog[];
+  items: FoodLogResponse[];
   total: number;
 }
 

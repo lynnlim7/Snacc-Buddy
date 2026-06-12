@@ -1,18 +1,18 @@
 import { create } from "zustand";
-import { DailySummary, FoodLog, WeeklySummary } from "../types/food";
+import { AnalyzeResponse, DailySummary, FoodLogResponse, WeeklySummary } from "../types/food";
 import { foodApi } from "../services/api";
 
 const DEFAULT_USER_ID = "guest";
 
 interface FoodState {
   userId: string;
-  logs: FoodLog[];
+  logs: FoodLogResponse[];
   logsTotal: number;
   logsOffset: number;
   isLoadingLogs: boolean;
 
   isAnalyzing: boolean;
-  lastAnalyzed: FoodLog | null;
+  lastAnalyzed: AnalyzeResponse | null;
 
   dailySummary: DailySummary | null;
   weeklySummary: WeeklySummary | null;
@@ -23,7 +23,7 @@ interface FoodState {
 
 interface FoodActions {
   setUserId: (id: string) => void;
-  analyzeImage: (imageUri: string) => Promise<FoodLog | null>;
+  analyzeImage: (imageUri: string) => Promise<AnalyzeResponse | null>;
   fetchLogs: (reset?: boolean) => Promise<void>;
   fetchMoreLogs: () => Promise<void>;
   fetchDailySummary: (date?: string) => Promise<void>;
@@ -52,14 +52,9 @@ export const useFoodStore = create<FoodState & FoodActions>((set, get) => ({
   analyzeImage: async (imageUri) => {
     set({ isAnalyzing: true, error: null });
     try {
-      const log = await foodApi.analyzeImage(get().userId, imageUri);
-      set((s) => ({
-        isAnalyzing: false,
-        lastAnalyzed: log,
-        logs: [log, ...s.logs],
-        logsTotal: s.logsTotal + 1,
-      }));
-      return log;
+      const response = await foodApi.analyzeImage(imageUri);
+      set({ isAnalyzing: false, lastAnalyzed: response });
+      return response;
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Analysis failed";
       set({ isAnalyzing: false, error: message });
@@ -71,7 +66,7 @@ export const useFoodStore = create<FoodState & FoodActions>((set, get) => ({
     set({ isLoadingLogs: true, error: null });
     try {
       const offset = reset ? 0 : get().logsOffset;
-      const { items, total } = await foodApi.getLogs(get().userId, 20, offset);
+      const { items, total } = await foodApi.getLogs(20, offset);
       set({
         isLoadingLogs: false,
         logs: reset ? items : [...get().logs, ...items],
@@ -93,7 +88,7 @@ export const useFoodStore = create<FoodState & FoodActions>((set, get) => ({
   fetchDailySummary: async (date) => {
     set({ isLoadingAnalytics: true, error: null });
     try {
-      const summary = await foodApi.getDailySummary(get().userId, date);
+      const summary = await foodApi.getDailySummary(date);
       set({ isLoadingAnalytics: false, dailySummary: summary });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Failed to load summary";
@@ -104,7 +99,7 @@ export const useFoodStore = create<FoodState & FoodActions>((set, get) => ({
   fetchWeeklySummary: async () => {
     set({ isLoadingAnalytics: true, error: null });
     try {
-      const summary = await foodApi.getWeeklySummary(get().userId);
+      const summary = await foodApi.getWeeklySummary();
       set({ isLoadingAnalytics: false, weeklySummary: summary });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Failed to load weekly data";

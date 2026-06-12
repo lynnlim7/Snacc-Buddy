@@ -49,10 +49,10 @@ export default function CameraScreen() {
   const previewSummary: DailySummary | null = lastAnalyzed
     ? {
         date: new Date().toISOString().slice(0, 10),
-        total_calories: lastAnalyzed.calories,
-        total_protein_g: lastAnalyzed.protein_g ?? 0,
-        total_carbs_g: lastAnalyzed.carbs_g ?? 0,
-        total_fat_g: lastAnalyzed.fat_g ?? 0,
+        total_calories: lastAnalyzed.analysis.estimated_total_calories,
+        total_protein_g: lastAnalyzed.analysis.macros.protein_g ?? 0,
+        total_carbs_g: lastAnalyzed.analysis.macros.carbs_g ?? 0,
+        total_fat_g: lastAnalyzed.analysis.macros.fat_g ?? 0,
         meal_count: 1,
       }
     : null;
@@ -88,10 +88,7 @@ export default function CameraScreen() {
 
       {lastAnalyzed && !isAnalyzing && (
         <View style={styles.result}>
-          <Text style={styles.resultTitle}>{lastAnalyzed.food_name}</Text>
-          {lastAnalyzed.origin && (
-            <Text style={styles.resultMeta}>{lastAnalyzed.origin}</Text>
-          )}
+          <Text style={styles.resultTitle}>{lastAnalyzed.analysis.food_name}</Text>
           {previewSummary && <NutritionSummary summary={previewSummary} compact />}
         </View>
       )}

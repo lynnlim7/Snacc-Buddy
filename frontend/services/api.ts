@@ -2,7 +2,7 @@ import axios from "axios";
 import { config } from "../config";
 import { getToken } from "../stores/authStore";
 import { UserProfile } from "../stores/userStore";
-import { DailySummary, FoodLog, FoodLogList, WeeklySummary } from "../types/food";
+import { AnalyzeResponse, DailySummary, FoodLogList, FoodLogResponse, GeminiAnalysis, WeeklySummary } from "../types/food";
 
 const client = axios.create({ baseURL: config.apiUrl });
 
@@ -41,7 +41,7 @@ export const authApi = {
 };
 
 export const foodApi = {
-  analyzeImage: async (imageUri: string): Promise<FoodLog> => {
+  analyzeImage: async (imageUri: string): Promise<AnalyzeResponse> => {
     const form = new FormData();
 
     if (config.platformMode === "web") {
@@ -56,35 +56,41 @@ export const foodApi = {
       } as unknown as Blob);
     }
 
-    const { data } = await client.post<FoodLog>("/api/v1/food/analyze", form);
+    const { data } = await client.post<AnalyzeResponse>("/api/v1/food/analyze", form);
     return data;
   },
 
-  getLogs: async (userId: string, limit = 20, offset = 0): Promise<FoodLogList> => {
+  confirmLog: async (payload: {
+    meal_type: string;
+    image_urls: string[];
+    analysis: GeminiAnalysis;
+    inference_log_id?: string;
+  }): Promise<FoodLogResponse> => {
+    const { data } = await client.post<FoodLogResponse>("/api/v1/food/logs", payload);
+    return data;
+  },
+
+  getLogs: async (limit = 20, offset = 0): Promise<FoodLogList> => {
     const { data } = await client.get<FoodLogList>("/api/v1/food/logs", {
-      params: { user_id: userId, limit, offset },
+      params: { limit, offset },
     });
     return data;
   },
 
-  getLog: async (userId: string, logId: string): Promise<FoodLog> => {
-    const { data } = await client.get<FoodLog>(`/api/v1/food/logs/${logId}`, {
-      params: { user_id: userId },
-    });
+  getLog: async (logId: string): Promise<FoodLogResponse> => {
+    const { data } = await client.get<FoodLogResponse>(`/api/v1/food/logs/${logId}`);
     return data;
   },
 
-  getDailySummary: async (userId: string, date?: string): Promise<DailySummary> => {
+  getDailySummary: async (date?: string): Promise<DailySummary> => {
     const { data } = await client.get<DailySummary>("/api/v1/analytics/daily", {
-      params: { user_id: userId, target_date: date },
+      params: { target_date: date },
     });
     return data;
   },
 
-  getWeeklySummary: async (userId: string): Promise<WeeklySummary> => {
-    const { data } = await client.get<WeeklySummary>("/api/v1/analytics/weekly", {
-      params: { user_id: userId },
-    });
+  getWeeklySummary: async (): Promise<WeeklySummary> => {
+    const { data } = await client.get<WeeklySummary>("/api/v1/analytics/weekly");
     return data;
   },
 };

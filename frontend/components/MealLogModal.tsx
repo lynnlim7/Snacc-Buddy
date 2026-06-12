@@ -45,23 +45,27 @@ const MEAL_TYPES: MealType[] = [
 async function analyseImage(uri: string): Promise<{
   name: string;
   nutrition: NutritionInfo;
+  inferenceLogId: string;
 }> {
-  const log = await foodApi.analyzeImage(uri);
-  const protein_g = log.protein_g ?? 0;
-  const carbs_g   = log.carbs_g   ?? 0;
-  const fat_g     = log.fat_g     ?? 0;
+  const response = await foodApi.analyzeImage(uri);
+  const a = response.analysis;
+  const protein_g = a.macros.protein_g ?? 0;
+  const carbs_g   = a.macros.carbs_g   ?? 0;
+  const fat_g     = a.macros.fat_g     ?? 0;
+  const fiber_g   = a.macros.fibre_g   ?? 0;
   return {
-    name: log.food_name,
+    inferenceLogId: response.inference_log_id,
+    name: a.food_name,
     nutrition: {
-      calories:    log.calories,
+      calories:    a.estimated_total_calories,
       protein_g,
       carbs_g,
       fat_g,
-      fiber_g:     0,
+      fiber_g,
       proteinDots: calcDots(protein_g, DAILY_TARGETS.protein_g),
       carbsDots:   calcDots(carbs_g,   DAILY_TARGETS.carbs_g),
       fatDots:     calcDots(fat_g,     DAILY_TARGETS.fat_g),
-      fiberDots:   calcDots(0,         DAILY_TARGETS.fiber_g),
+      fiberDots:   calcDots(fiber_g,   DAILY_TARGETS.fiber_g),
     },
   };
 }
@@ -74,6 +78,7 @@ export function MealLogModal({ visible, onClose, onSave, prefillType }: Props) {
   const [imageUri, setImageUri]     = useState<string | null>(null);
   const [result, setResult]         = useState<{ name: string; nutrition: NutritionInfo } | null>(null);
   const [editName, setEditName]     = useState("");
+  const [inferenceLogId, setInferenceLogId] = useState<string | null>(null);
 
   function reset() {
     setStep("type");
@@ -81,6 +86,7 @@ export function MealLogModal({ visible, onClose, onSave, prefillType }: Props) {
     setImageUri(null);
     setResult(null);
     setEditName("");
+    setInferenceLogId(null);
   }
 
   function handleClose() {
@@ -113,7 +119,8 @@ export function MealLogModal({ visible, onClose, onSave, prefillType }: Props) {
 
     try {
       const analysis = await analyseImage(uri);
-      setResult(analysis);
+      setInferenceLogId(analysis.inferenceLogId);
+      setResult({ name: analysis.name, nutrition: analysis.nutrition });
       setEditName(analysis.name);
       setStep("results");
     } catch {

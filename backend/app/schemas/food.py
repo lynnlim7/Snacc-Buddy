@@ -41,6 +41,11 @@ class GeminiAnalysis(BaseModel):
     notes: str | None = None
 
 
+class AnalyzeResponse(BaseModel):
+    analysis: GeminiAnalysis
+    inference_log_id: uuid.UUID
+
+
 class FoodLogList(BaseModel):
     items: list["FoodLogResponse"]
     total: int
