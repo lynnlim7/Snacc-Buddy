@@ -1,8 +1,12 @@
 import { useEffect } from "react";
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { PaperBackground } from "../../components/PaperBackground";
 import { useFoodStore } from "../../stores/foodStore";
 import { DailySummary } from "../../types/food";
+import { colors, fonts, spacing, radius } from "../../constants/theme";
+
+// ─── Bar chart ────────────────────────────────────────────────
 
 function DayBar({ summary, maxCalories }: { summary: DailySummary; maxCalories: number }) {
   const pct = maxCalories > 0 ? (summary.total_calories / maxCalories) * 100 : 0;
@@ -11,13 +15,28 @@ function DayBar({ summary, maxCalories }: { summary: DailySummary; maxCalories: 
   return (
     <View style={styles.barWrapper}>
       <View style={styles.barTrack}>
-        <View style={[styles.barFill, { height: `${pct}%` }]} />
+        <View style={[styles.barFill, { height: `${pct}%` as any }]} />
       </View>
       <Text style={styles.barLabel}>{dayLabel}</Text>
-      <Text style={styles.barCal}>{summary.total_calories}</Text>
+      <Text style={styles.barCal}>{summary.total_calories > 0 ? summary.total_calories : ""}</Text>
     </View>
   );
 }
+
+// ─── Macro chip ───────────────────────────────────────────────
+
+function MacroChip({ label, value, unit }: { label: string; value: number; unit: string }) {
+  return (
+    <View style={styles.macroChip}>
+      <Text style={styles.macroChipValue}>
+        {Math.round(value)}<Text style={styles.macroChipUnit}>{unit}</Text>
+      </Text>
+      <Text style={styles.macroChipLabel}>{label}</Text>
+    </View>
+  );
+}
+
+// ─── Screen ───────────────────────────────────────────────────
 
 export default function AnalyticsScreen() {
   const { weeklySummary, dailySummary, isLoadingAnalytics, fetchWeeklySummary, fetchDailySummary } =
@@ -33,85 +52,159 @@ export default function AnalyticsScreen() {
     : 1;
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scroll}>
-        <Text style={styles.heading}>Analytics</Text>
+    <PaperBackground>
+      <SafeAreaView style={styles.safe}>
+        <ScrollView
+          contentContainerStyle={styles.scroll}
+          showsVerticalScrollIndicator={false}
+        >
+          <Text style={styles.heading}>Stats</Text>
 
-        {isLoadingAnalytics && <ActivityIndicator color="#16a34a" style={styles.loader} />}
+          {isLoadingAnalytics && (
+            <ActivityIndicator color={colors.accent} style={styles.loader} />
+          )}
 
-        {dailySummary && (
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Today</Text>
-            <Text style={styles.calorieBig}>{dailySummary.total_calories} kcal</Text>
-            <View style={styles.macroRow}>
-              <MacroChip label="Protein" value={dailySummary.total_protein_g} unit="g" />
-              <MacroChip label="Carbs" value={dailySummary.total_carbs_g} unit="g" />
-              <MacroChip label="Fat" value={dailySummary.total_fat_g} unit="g" />
+          {dailySummary && (
+            <View style={styles.card}>
+              <Text style={styles.cardLabel}>Today</Text>
+              <Text style={styles.calorieHero}>
+                {dailySummary.total_calories}
+                <Text style={styles.calorieUnit}> kcal</Text>
+              </Text>
+              <View style={styles.macroRow}>
+                <MacroChip label="Protein" value={dailySummary.total_protein_g} unit="g" />
+                <MacroChip label="Carbs"   value={dailySummary.total_carbs_g}   unit="g" />
+                <MacroChip label="Fat"     value={dailySummary.total_fat_g}     unit="g" />
+              </View>
             </View>
-          </View>
-        )}
+          )}
 
-        {weeklySummary && (
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Past 7 days</Text>
-            <View style={styles.chartRow}>
-              {weeklySummary.week.map((d) => (
-                <DayBar key={d.date} summary={d} maxCalories={maxCalories} />
-              ))}
+          {weeklySummary && (
+            <View style={styles.card}>
+              <Text style={styles.cardLabel}>Past 7 days</Text>
+              <View style={styles.chartRow}>
+                {weeklySummary.week.map((d) => (
+                  <DayBar key={d.date} summary={d} maxCalories={maxCalories} />
+                ))}
+              </View>
             </View>
-          </View>
-        )}
-      </ScrollView>
-    </SafeAreaView>
+          )}
+        </ScrollView>
+      </SafeAreaView>
+    </PaperBackground>
   );
 }
 
-function MacroChip({ label, value, unit }: { label: string; value: number; unit: string }) {
-  return (
-    <View style={styles.chip}>
-      <Text style={styles.chipValue}>{Math.round(value)}{unit}</Text>
-      <Text style={styles.chipLabel}>{label}</Text>
-    </View>
-  );
-}
+// ─── Styles ───────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#f9fafb" },
-  scroll: { padding: 16, paddingBottom: 32 },
-  heading: { fontSize: 28, fontWeight: "700", color: "#111827", marginBottom: 16 },
-  loader: { marginTop: 32 },
+  safe:   { flex: 1 },
+  scroll: {
+    paddingHorizontal: spacing.xl,
+    paddingTop:        spacing.xl,
+    paddingBottom:     spacing.xxl,
+    gap:               spacing.lg,
+  },
+  heading: {
+    fontFamily: fonts.heading700,
+    fontSize:   42,
+    color:      colors.text,
+    lineHeight: 44,
+  },
+  loader: { marginVertical: spacing.xl },
+
+  // ── Cards ──
   card: {
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 16,
-    shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    backgroundColor: colors.bgSecondary,
+    borderRadius:    radius.lg,
+    borderWidth:     1.5,
+    borderColor:     colors.border,
+    padding:         spacing.md,
+    gap:             spacing.md,
   },
-  cardTitle: { fontSize: 14, fontWeight: "600", color: "#6b7280", marginBottom: 8 },
-  calorieBig: { fontSize: 36, fontWeight: "800", color: "#16a34a" },
-  macroRow: { flexDirection: "row", gap: 12, marginTop: 12 },
-  chip: {
-    flex: 1,
-    backgroundColor: "#f3f4f6",
-    borderRadius: 12,
-    padding: 12,
-    alignItems: "center",
+  cardLabel: {
+    fontFamily:    fonts.body600,
+    fontSize:      12,
+    color:         colors.textMuted,
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
   },
-  chipValue: { fontSize: 18, fontWeight: "700", color: "#111827" },
-  chipLabel: { fontSize: 12, color: "#6b7280", marginTop: 2 },
-  chartRow: { flexDirection: "row", alignItems: "flex-end", height: 120, gap: 8, marginTop: 8 },
-  barWrapper: { flex: 1, alignItems: "center" },
+
+  // ── Today ──
+  calorieHero: {
+    fontFamily: fonts.heading700,
+    fontSize:   56,
+    color:      colors.accent,
+    lineHeight: 58,
+  },
+  calorieUnit: {
+    fontFamily: fonts.heading400,
+    fontSize:   28,
+    color:      colors.textMuted,
+  },
+  macroRow: {
+    flexDirection: "row",
+    gap:           spacing.sm,
+  },
+  macroChip: {
+    flex:            1,
+    backgroundColor: colors.bg,
+    borderRadius:    radius.md,
+    borderWidth:     1.5,
+    borderColor:     colors.border,
+    padding:         spacing.sm,
+    alignItems:      "center",
+    gap:             spacing.xs,
+  },
+  macroChipValue: {
+    fontFamily: fonts.heading700,
+    fontSize:   22,
+    color:      colors.text,
+  },
+  macroChipUnit: {
+    fontFamily: fonts.body400,
+    fontSize:   14,
+    color:      colors.textMuted,
+  },
+  macroChipLabel: {
+    fontFamily: fonts.body500,
+    fontSize:   12,
+    color:      colors.textMuted,
+  },
+
+  // ── Bar chart ──
+  chartRow: {
+    flexDirection: "row",
+    alignItems:    "flex-end",
+    height:        120,
+    gap:           spacing.xs,
+  },
+  barWrapper: {
+    flex:        1,
+    alignItems:  "center",
+    gap:         spacing.xs,
+  },
   barTrack: {
-    flex: 1,
-    width: "100%",
-    backgroundColor: "#e5e7eb",
-    borderRadius: 6,
-    justifyContent: "flex-end",
+    flex:            1,
+    width:           "100%",
+    backgroundColor: colors.border,
+    borderRadius:    radius.sm,
+    justifyContent:  "flex-end",
+    overflow:        "hidden",
   },
-  barFill: { backgroundColor: "#16a34a", borderRadius: 6, minHeight: 4 },
-  barLabel: { fontSize: 11, color: "#6b7280", marginTop: 4 },
-  barCal: { fontSize: 10, color: "#9ca3af" },
+  barFill: {
+    backgroundColor: colors.accent,
+    borderRadius:    radius.sm,
+    minHeight:       4,
+  },
+  barLabel: {
+    fontFamily: fonts.body500,
+    fontSize:   11,
+    color:      colors.textMuted,
+  },
+  barCal: {
+    fontFamily: fonts.body400,
+    fontSize:   10,
+    color:      colors.textLight,
+  },
 });
