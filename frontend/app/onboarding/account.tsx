@@ -59,6 +59,7 @@ export default function AccountScreen() {
       setToken(token);
       const me = await authApi.getMe();
       setProfile(me);
+      onboarding.reset();
       router.replace("/onboarding/final-welcome" as any);
     } catch (e: any) {
       const detail = e?.response?.data?.detail;
