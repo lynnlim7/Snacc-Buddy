@@ -102,6 +102,15 @@ export default function AnalyticsScreen() {
             <ActivityIndicator color={colors.accent} style={styles.loader} />
           )}
 
+          {!isLoadingAnalytics && !dailySummary && !weeklySummary && (
+            <View style={styles.emptyWrap}>
+              <Text style={styles.emptyTitle}>Nothing here yet</Text>
+              <Text style={styles.emptyBody}>
+                Log your first meal on the scan tab and your stats will appear here
+              </Text>
+            </View>
+          )}
+
           {dailySummary && (
             <View style={styles.card}>
               <Text style={styles.cardLabel}>Today</Text>
@@ -174,6 +183,26 @@ const styles = StyleSheet.create({
     lineHeight: 44,
   },
   loader: { marginVertical: spacing.xl },
+
+  // ── Empty state ──
+  emptyWrap: {
+    alignItems:  "center",
+    paddingTop:  spacing.xxl,
+    gap:         spacing.md,
+  },
+  emptyTitle: {
+    fontFamily: fonts.heading700,
+    fontSize:   28,
+    color:      colors.text,
+    lineHeight: 32,
+  },
+  emptyBody: {
+    fontFamily: fonts.heading400,
+    fontSize:   17,
+    color:      colors.textMuted,
+    textAlign:  "center",
+    lineHeight: 25,
+  },
 
   // ── Cards ──
   card: {
