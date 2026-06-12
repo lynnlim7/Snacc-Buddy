@@ -3,6 +3,8 @@
  * Each MealEntry groups food photos under a single meal type.
  */
 import { create } from "zustand";
+import { foodApi } from "../services/api";
+import { FoodLogResponse } from "../types/food";
 
 export type MealType = "Breakfast" | "Lunch" | "Dinner" | "Snack" | "Dessert" | "Supper";
 
@@ -52,6 +54,7 @@ interface DiaryState {
   updateMealName: (date: string, mealId: string, photoId: string, name: string) => void;
   updateMealMood: (date: string, mealId: string, mood: string[]) => void;
   updateMealNote: (date: string, mealId: string, note: string) => void;
+  loadLogsFromBackend: (date: string) => Promise<void>;
 }
 
 export const useDiaryStore = create<DiaryState>((set, get) => ({
@@ -155,6 +158,17 @@ export const useDiaryStore = create<DiaryState>((set, get) => ({
         ),
       },
     })),
+
+  loadLogsFromBackend: async (date) => {
+    const { items } = await foodApi.getLogs(100, 0);
+    const forDate = items.filter((log) => log.created_at.startsWith(date));
+    set((state) => ({
+      mealsByDate: {
+        ...state.mealsByDate,
+        [date]: forDate.map(foodLogToMealEntry),
+      },
+    }));
+  },
 }));
 
 // ─── Helpers ──────────────────────────────────────────────────
@@ -179,3 +193,34 @@ export const DAILY_TARGETS = {
   fat_g:     65,
   fiber_g:   30,
 };
+
+function foodLogToMealEntry(log: FoodLogResponse): MealEntry {
+  const name      = log.meal_name ?? "Unknown food";
+  const calories  = log.estimated_total_calories;
+  const protein_g = log.protein_g ?? 0;
+  const carbs_g   = log.carbs_g   ?? 0;
+  const fat_g     = log.fat_g     ?? 0;
+  return {
+    id:   log.id,
+    type: (log.meal_type.charAt(0).toUpperCase() + log.meal_type.slice(1)) as MealType,
+    photos: [{
+      id:   log.id,
+      uri:  "",   // no device-local URI for persisted entries; PolaroidStrip shows placeholder
+      name,
+      nutrition: {
+        calories,
+        protein_g,
+        carbs_g,
+        fat_g,
+        fiber_g:     0,
+        proteinDots: calcDots(protein_g, DAILY_TARGETS.protein_g),
+        carbsDots:   calcDots(carbs_g,   DAILY_TARGETS.carbs_g),
+        fatDots:     calcDots(fat_g,     DAILY_TARGETS.fat_g),
+        fiberDots:   0,
+      },
+    }],
+    totalCalories: calories,
+    mood: [],
+    note: "",
+  };
+}

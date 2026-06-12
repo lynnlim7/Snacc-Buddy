@@ -9,7 +9,7 @@
  *   - Sub-items per meal (food photo names)
  *   - Floating "+" FAB → opens MealLogModal
  */
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   ScrollView,
   StyleSheet,
@@ -97,7 +97,13 @@ function PolaroidStrip({ photos }: { photos: MealEntry["photos"] }) {
             { transform: [{ rotate: POLAROID_ROTATIONS[i % POLAROID_ROTATIONS.length] }] },
           ]}
         >
-          <Image source={{ uri: photo.uri }} style={styles.polaroidImg} resizeMode="cover" />
+          {photo.uri ? (
+            <Image source={{ uri: photo.uri }} style={styles.polaroidImg} resizeMode="cover" />
+          ) : (
+            <View style={[styles.polaroidImg, styles.polaroidPlaceholder]}>
+              <Ionicons name="restaurant-outline" size={28} color={colors.textLight} />
+            </View>
+          )}
           <Text style={styles.polaroidCaption} numberOfLines={1}>{photo.name}</Text>
         </View>
       ))}
@@ -327,13 +333,19 @@ export default function DiaryScreen() {
   const [editingPhoto,  setEditingPhoto]  = useState<{ mealId: string; photoId: string } | null>(null);
 
   // Reactive store selectors
-  const meals               = useDiaryStore((s) => s.mealsByDate[today] ?? EMPTY_MEALS);
-  const streak              = useDiaryStore((s) => s.streak);
-  const addMeal             = useDiaryStore((s) => s.addMeal);
-  const deleteMeal          = useDiaryStore((s) => s.deleteMeal);
-  const addPhotoToMeal      = useDiaryStore((s) => s.addPhotoToMeal);
-  const deletePhotoFromMeal = useDiaryStore((s) => s.deletePhotoFromMeal);
-  const userName            = useOnboardingStore((s) => s.name);
+  const meals                = useDiaryStore((s) => s.mealsByDate[today] ?? EMPTY_MEALS);
+  const streak               = useDiaryStore((s) => s.streak);
+  const addMeal              = useDiaryStore((s) => s.addMeal);
+  const deleteMeal           = useDiaryStore((s) => s.deleteMeal);
+  const addPhotoToMeal       = useDiaryStore((s) => s.addPhotoToMeal);
+  const deletePhotoFromMeal  = useDiaryStore((s) => s.deletePhotoFromMeal);
+  const loadLogsFromBackend  = useDiaryStore((s) => s.loadLogsFromBackend);
+  const userName             = useOnboardingStore((s) => s.name);
+
+  useEffect(() => {
+    loadLogsFromBackend(today);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const totalCalories = meals.reduce((sum, m) => sum + m.totalCalories, 0);
 
@@ -751,6 +763,11 @@ const styles = StyleSheet.create({
     width:  90,
     height: 90,
     borderRadius: 1,
+  },
+  polaroidPlaceholder: {
+    backgroundColor: colors.bgSecondary,
+    alignItems:      "center",
+    justifyContent:  "center",
   },
   polaroidCaption: {
     position:   "absolute",
