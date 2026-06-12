@@ -324,11 +324,13 @@ function MealRow({
 
 // ─── Empty state ──────────────────────────────────────────────
 
-function EmptyDiary() {
+function EmptyDiary({ isToday }: { isToday: boolean }) {
   return (
     <View style={styles.emptyWrap}>
       <Text style={styles.emptyText}>
-        Nothing here yet..{"\n"}tap + to start writing your story
+        {isToday
+          ? "Nothing here yet..\ntap + to start writing your story"
+          : "No meals logged on this day"}
       </Text>
     </View>
   );
@@ -336,15 +338,14 @@ function EmptyDiary() {
 
 // ─── Calorie card ─────────────────────────────────────────────
 
-function CalorieCard({ total, goal }: { total: number; goal: number }) {
+function CalorieCard({ total, goal, isToday }: { total: number; goal: number; isToday: boolean }) {
   const pct     = goal > 0 ? Math.min(1, total / goal) : 0;
   const reached = Math.round(pct * 100);
-  // Keep fill width at least 3% so the pill always shows when non-zero
   const fillPct = total > 0 ? Math.max(3, reached) : 0;
 
   return (
     <View style={styles.calorieCard}>
-      <Text style={styles.calCardLabel}>Today's calories</Text>
+      <Text style={styles.calCardLabel}>{isToday ? "Today's calories" : "Day's calories"}</Text>
       <Text style={styles.calCardValue}>
         {total > 0 ? total.toLocaleString() : "0"}
       </Text>
@@ -366,14 +367,14 @@ function CalorieCard({ total, goal }: { total: number; goal: number }) {
 // ─── Main screen ─────────────────────────────────────────────
 
 export default function DiaryScreen() {
-  const today = todayKey();
+  const [selectedDate,    setSelectedDate]    = useState(todayKey);
   const [modalVisible,    setModalVisible]    = useState(false);
   const [editPrefill,     setEditPrefill]     = useState<MealType | undefined>(undefined);
   const [editingPhoto,    setEditingPhoto]    = useState<{ mealId: string; photoId: string } | null>(null);
   const [dailyCalories,   setDailyCalories]   = useState(0);
 
   // Reactive store selectors
-  const meals                = useDiaryStore((s) => s.mealsByDate[today] ?? EMPTY_MEALS);
+  const meals                = useDiaryStore((s) => s.mealsByDate[selectedDate] ?? EMPTY_MEALS);
   const streak               = useDiaryStore((s) => s.streak);
   const setStreak            = useDiaryStore((s) => s.setStreak);
   const addMeal              = useDiaryStore((s) => s.addMeal);
@@ -386,26 +387,40 @@ export default function DiaryScreen() {
   const calorieGoal          = computeCalorieGoal(profile);
 
   useEffect(() => {
-    loadLogsFromBackend(today);
-    foodApi.getDailySummary(today)
-      .then((s) => setDailyCalories(s.total_calories))
-      .catch(() => {});
-    foodApi.getStreak()
-      .then(setStreak)
-      .catch(() => {});
+    foodApi.getStreak().then(setStreak).catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    loadLogsFromBackend(selectedDate);
+    foodApi.getDailySummary(selectedDate)
+      .then((s) => setDailyCalories(s.total_calories))
+      .catch(() => {});
+  }, [selectedDate]);
+
+  const isToday     = selectedDate === todayKey();
   const greeting    = getGreeting();
   const displayName = userName.trim() || "My";
   const initial     = displayName !== "My" ? displayName[0].toUpperCase() : "?";
 
-  // Format date: "Tuesday, 20 May"
-  const dateDisplay = new Date().toLocaleDateString("en-GB", {
+  const dateDisplay = new Date(selectedDate + "T12:00:00").toLocaleDateString("en-GB", {
     weekday: "long",
     day:     "numeric",
     month:   "long",
   });
+
+  function goToPrevDay() {
+    const d = new Date(selectedDate + "T12:00:00");
+    d.setDate(d.getDate() - 1);
+    setSelectedDate(d.toISOString().split("T")[0]);
+  }
+
+  function goToNextDay() {
+    if (isToday) return;
+    const d = new Date(selectedDate + "T12:00:00");
+    d.setDate(d.getDate() + 1);
+    setSelectedDate(d.toISOString().split("T")[0]);
+  }
 
   function handleModalClose() {
     setModalVisible(false);
@@ -419,23 +434,20 @@ export default function DiaryScreen() {
    */
   function handleSaveMeal(incoming: MealEntry) {
     if (editingPhoto) {
-      // Replace the specific photo being edited, keep everything else
-      deletePhotoFromMeal(today, editingPhoto.mealId, editingPhoto.photoId);
-      addPhotoToMeal(today, editingPhoto.mealId, incoming.photos[0]);
+      deletePhotoFromMeal(selectedDate, editingPhoto.mealId, editingPhoto.photoId);
+      addPhotoToMeal(selectedDate, editingPhoto.mealId, incoming.photos[0]);
     } else {
-      // Add mode: merge or create
       const existing = meals.find((m) => m.type === incoming.type);
       if (existing && existing.photos.length < 5) {
         incoming.photos.forEach((photo) =>
-          addPhotoToMeal(today, existing.id, photo)
+          addPhotoToMeal(selectedDate, existing.id, photo)
         );
       } else {
-        addMeal(today, incoming);
+        addMeal(selectedDate, incoming);
       }
     }
     handleModalClose();
-    // Refresh backend total — the meal was already saved via confirmLog
-    foodApi.getDailySummary(today)
+    foodApi.getDailySummary(selectedDate)
       .then((s) => setDailyCalories(s.total_calories))
       .catch(() => {});
   }
@@ -452,9 +464,9 @@ export default function DiaryScreen() {
     const meal = meals.find((m) => m.id === mealId);
     if (!meal) return;
     if (meal.photos.length === 1) {
-      deleteMeal(today, mealId);
+      deleteMeal(selectedDate, mealId);
     } else {
-      deletePhotoFromMeal(today, mealId, photoId);
+      deletePhotoFromMeal(selectedDate, mealId, photoId);
     }
   }
 
@@ -491,10 +503,23 @@ export default function DiaryScreen() {
           </View>
 
           {/* ── Date ── */}
-          <Text style={styles.dateText}>{dateDisplay}</Text>
+          <View style={styles.dateNav}>
+            <TouchableOpacity onPress={goToPrevDay} style={styles.dateNavBtn} accessibilityLabel="Previous day">
+              <Ionicons name="chevron-back" size={20} color={colors.textMuted} />
+            </TouchableOpacity>
+            <Text style={styles.dateText}>{dateDisplay}</Text>
+            <TouchableOpacity
+              onPress={goToNextDay}
+              style={styles.dateNavBtn}
+              disabled={isToday}
+              accessibilityLabel="Next day"
+            >
+              <Ionicons name="chevron-forward" size={20} color={isToday ? colors.border : colors.textMuted} />
+            </TouchableOpacity>
+          </View>
 
           {/* ── Calorie card ── */}
-          <CalorieCard total={dailyCalories} goal={calorieGoal} />
+          <CalorieCard total={dailyCalories} goal={calorieGoal} isToday={isToday} />
 
           {/* ── Meals section ── */}
           <Text style={styles.mealsHeader}>Meals</Text>
@@ -502,13 +527,13 @@ export default function DiaryScreen() {
 
           <View style={styles.mealsList}>
             {meals.length === 0 ? (
-              <EmptyDiary />
+              <EmptyDiary isToday={isToday} />
             ) : (
               meals.map((meal) => (
                 <MealRow
                   key={meal.id}
                   meal={meal}
-                  date={today}
+                  date={selectedDate}
                   onEditPhoto={(photoId) =>
                     handleEditPhoto(meal.id, photoId, meal.type)
                   }
@@ -521,15 +546,17 @@ export default function DiaryScreen() {
           </View>
         </ScrollView>
 
-        {/* ── Floating action button ── */}
-        <TouchableOpacity
-          style={styles.fab}
-          onPress={() => setModalVisible(true)}
-          accessibilityRole="button"
-          accessibilityLabel="Log a meal"
-        >
-          <Ionicons name="add" size={30} color={colors.text} />
-        </TouchableOpacity>
+        {/* ── Floating action button (today only) ── */}
+        {isToday && (
+          <TouchableOpacity
+            style={styles.fab}
+            onPress={() => setModalVisible(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Log a meal"
+          >
+            <Ionicons name="add" size={30} color={colors.text} />
+          </TouchableOpacity>
+        )}
 
         {/* ── Meal log modal ── */}
         <MealLogModal
@@ -622,11 +649,20 @@ const styles = StyleSheet.create({
   },
 
   // ── Date ──
+  dateNav: {
+    flexDirection: "row",
+    alignItems:    "center",
+    marginBottom:  spacing.md,
+    gap:           4,
+  },
+  dateNavBtn: {
+    padding: 4,
+  },
   dateText: {
     fontFamily: fonts.heading600,
-    fontSize:   28,
+    fontSize:   26,
     color:      colors.text,
-    marginBottom: spacing.md,
+    flexShrink: 1,
   },
 
   // ── Calorie card ──
