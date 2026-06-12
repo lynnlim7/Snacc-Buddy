@@ -12,6 +12,7 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import {
   Alert,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -377,6 +378,7 @@ export default function DiaryScreen() {
   const [editPrefill,     setEditPrefill]     = useState<MealType | undefined>(undefined);
   const [editingPhoto,    setEditingPhoto]    = useState<{ mealId: string; photoId: string } | null>(null);
   const [dailyCalories,   setDailyCalories]   = useState(0);
+  const [refreshing,      setRefreshing]      = useState(false);
 
   // Reactive store selectors
   const meals                = useDiaryStore((s) => s.mealsByDate[selectedDate] ?? EMPTY_MEALS);
@@ -457,6 +459,16 @@ export default function DiaryScreen() {
       .catch(() => {});
   }
 
+  async function handleRefresh() {
+    setRefreshing(true);
+    await Promise.allSettled([
+      loadLogsFromBackend(selectedDate),
+      foodApi.getDailySummary(selectedDate).then((s) => setDailyCalories(s.total_calories)),
+      foodApi.getStreak().then(setStreak),
+    ]);
+    setRefreshing(false);
+  }
+
   /** Opens the modal to re-upload a specific photo */
   function handleEditPhoto(mealId: string, photoId: string, mealType: MealType) {
     setEditingPhoto({ mealId, photoId });
@@ -493,6 +505,9 @@ export default function DiaryScreen() {
           style={styles.scroll}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+          }
         >
           {/* ── Header: greeting + streak + avatar ── */}
           <View style={styles.headerRow}>
