@@ -26,6 +26,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { PaperBackground } from "../../components/PaperBackground";
 import { MealLogModal } from "../../components/MealLogModal";
+import { foodApi } from "../../services/api";
 import {
   useDiaryStore,
   todayKey,
@@ -327,10 +328,10 @@ function CalorieCard({ total, goal }: { total: number; goal: number }) {
 
 export default function DiaryScreen() {
   const today = todayKey();
-  const [modalVisible,  setModalVisible]  = useState(false);
-  const [editPrefill,   setEditPrefill]   = useState<MealType | undefined>(undefined);
-  // Tracks which individual photo is being re-uploaded (edit mode)
-  const [editingPhoto,  setEditingPhoto]  = useState<{ mealId: string; photoId: string } | null>(null);
+  const [modalVisible,    setModalVisible]    = useState(false);
+  const [editPrefill,     setEditPrefill]     = useState<MealType | undefined>(undefined);
+  const [editingPhoto,    setEditingPhoto]    = useState<{ mealId: string; photoId: string } | null>(null);
+  const [dailyCalories,   setDailyCalories]   = useState(0);
 
   // Reactive store selectors
   const meals                = useDiaryStore((s) => s.mealsByDate[today] ?? EMPTY_MEALS);
@@ -344,10 +345,11 @@ export default function DiaryScreen() {
 
   useEffect(() => {
     loadLogsFromBackend(today);
+    foodApi.getDailySummary(today)
+      .then((s) => setDailyCalories(s.total_calories))
+      .catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const totalCalories = meals.reduce((sum, m) => sum + m.totalCalories, 0);
 
   const greeting    = getGreeting();
   const displayName = userName.trim() || "My";
@@ -387,6 +389,10 @@ export default function DiaryScreen() {
       }
     }
     handleModalClose();
+    // Refresh backend total — the meal was already saved via confirmLog
+    foodApi.getDailySummary(today)
+      .then((s) => setDailyCalories(s.total_calories))
+      .catch(() => {});
   }
 
   /** Opens the modal to re-upload a specific photo */
@@ -443,7 +449,7 @@ export default function DiaryScreen() {
           <Text style={styles.dateText}>{dateDisplay}</Text>
 
           {/* ── Calorie card ── */}
-          <CalorieCard total={totalCalories} goal={CALORIE_GOAL} />
+          <CalorieCard total={dailyCalories} goal={CALORIE_GOAL} />
 
           {/* ── Meals section ── */}
           <Text style={styles.mealsHeader}>Meals</Text>
