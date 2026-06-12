@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -99,6 +99,19 @@ export default function ProfileScreen() {
   const [lifestyle,  setLifestyle]  = useState<string | null>(profile?.lifestyle ?? null);
   const [saving,     setSaving]     = useState(false);
   const [saved,      setSaved]      = useState(false);
+
+  // Sync form if profile loads after mount (e.g. slow network on first launch)
+  useEffect(() => {
+    if (!profile) return;
+    setName(profile.name ?? "");
+    setAge(profile.age != null ? String(profile.age) : "");
+    setHeight(profile.height_cm != null ? String(profile.height_cm) : "");
+    setWeight(profile.current_weight_kg != null ? String(profile.current_weight_kg) : "");
+    setGoalWeight(profile.goal_weight_kg != null ? String(profile.goal_weight_kg) : "");
+    setGender(profile.gender);
+    setGoal(profile.goal);
+    setLifestyle(profile.lifestyle);
+  }, [profile?.id]);
 
   const initial = (
     (profile?.name?.trim()[0] ?? profile?.email?.[0] ?? "?")

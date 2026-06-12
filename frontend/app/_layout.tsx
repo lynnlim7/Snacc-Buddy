@@ -47,12 +47,17 @@ export default function RootLayout() {
     (async () => {
       const token = await useAuthStore.getState().loadFromStorage();
       if (token) {
+        // Load cached profile immediately so tabs never render with null profile
+        await useUserStore.getState().loadFromStorage();
         try {
           const me = await authApi.getMe();
           useUserStore.getState().setProfile(me);
-        } catch {
-          // Token expired or invalid — clear it so the user goes to login
-          useAuthStore.getState().clear();
+        } catch (err: any) {
+          // Only clear session on real auth failures, not network errors
+          if (err?.response?.status === 401 || err?.response?.status === 403) {
+            useAuthStore.getState().clear();
+            useUserStore.getState().clear();
+          }
         }
       }
       setReady(true);
