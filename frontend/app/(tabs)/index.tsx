@@ -407,7 +407,7 @@ export default function DiaryScreen() {
 
   const isToday     = selectedDate === todayKey();
   const greeting    = getGreeting();
-  const displayName = userName.trim() || "My";
+  const displayName = (profile?.name ?? userName).trim() || "My";
   const initial     = displayName !== "My" ? displayName[0].toUpperCase() : "?";
 
   const dateDisplay = new Date(selectedDate + "T12:00:00").toLocaleDateString("en-GB", {
