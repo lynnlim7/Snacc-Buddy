@@ -44,16 +44,18 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="camera"
+        options={{
+          title: "Scan",
+          tabBarIcon: ({ focused }) => <TabIcon name="camera-outline" focused={focused} />,
+        }}
+      />
+      <Tabs.Screen
         name="analytics"
         options={{
           title: "Progress",
           tabBarIcon: ({ focused }) => <TabIcon name="trending-up-outline" focused={focused} />,
         }}
-      />
-      {/* camera screen exists as a route but is NOT a tab — accessed via modal from diary */}
-      <Tabs.Screen
-        name="camera"
-        options={{ href: null }}
       />
     </Tabs>
   );
