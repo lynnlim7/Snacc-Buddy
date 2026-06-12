@@ -104,3 +104,14 @@ class FoodLogResponse(BaseModel):
     inference_log_id: uuid.UUID | None = None
     created_at: datetime
 
+
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+
+
+class FoodChatRequest(BaseModel):
+    prior_analysis: GeminiAnalysis
+    messages: list[ChatMessage]
+    inference_log_id: uuid.UUID | None = None
+

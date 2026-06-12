@@ -135,4 +135,43 @@ class GeminiService:
             raise AIParseError(str(e)) from e
 
 
+    async def refine_analysis(
+        self,
+        prior_analysis: GeminiAnalysis,
+        messages: list[dict],
+    ) -> GeminiAnalysis:
+        system_preamble = (
+            f"Prior food analysis: {prior_analysis.model_dump_json()}\n\n"
+            "Revise your analysis based on the user's correction. "
+            "Return ONLY valid JSON matching the original schema."
+        )
+        contents = [system_preamble] + [
+            types.Content(role=m["role"], parts=[types.Part(text=m["content"])])
+            for m in messages
+        ]
+        try:
+            response = await asyncio.wait_for(
+                self._client.aio.models.generate_content(
+                    model=settings.GEMINI_MODEL,
+                    contents=contents,
+                    config=types.GenerateContentConfig(
+                        response_mime_type="application/json",
+                        temperature=settings.GEMINI_TEMPERATURE,
+                    ),
+                ),
+                timeout=settings.GEMINI_TIMEOUT_SECONDS,
+            )
+            return GeminiAnalysis.model_validate(json.loads(response.text))
+        except asyncio.TimeoutError as e:
+            raise AITimeoutError() from e
+        except ClientError as e:
+            if e.code == 429:
+                if _is_daily_quota_exhausted(e):
+                    raise AIQuotaExceeded() from e
+                raise AIRateLimited(_parse_retry_after(e) or 10.0) from e
+            raise AIServiceError(str(e)) from e
+        except (json.JSONDecodeError, ValidationError) as e:
+            raise AIParseError(str(e)) from e
+
+
 gemini_service = GeminiService()

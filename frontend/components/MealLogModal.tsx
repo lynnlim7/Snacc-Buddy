@@ -6,7 +6,7 @@
  *   Step 2 "analyzing" → loading animation while AI processes photo
  *   Step 3 "results"   → nutrition breakdown + confirm
  */
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import {
   Modal, View, Text, StyleSheet, TouchableOpacity,
   ScrollView, ActivityIndicator, Alert, TextInput,
@@ -35,13 +35,28 @@ interface Props {
   prefillType?: MealType;
 }
 
-type Step = "type" | "analyzing" | "results";
+type Step = "type" | "analyzing" | "results" | "chat";
 
 const MEAL_TYPES: MealType[] = [
   "Breakfast", "Lunch", "Dinner", "Snack", "Dessert", "Supper",
 ];
 
-// ─── Real AI analyser ─────────────────────────────────────────
+// ─── AI helpers ───────────────────────────────────────────────
+
+function geminiAnalysisToNutrition(a: GeminiAnalysis): NutritionInfo {
+  const protein_g = a.macros?.protein_g ?? 0;
+  const carbs_g   = a.macros?.carbs_g   ?? 0;
+  const fat_g     = a.macros?.fat_g     ?? 0;
+  const fiber_g   = a.macros?.fibre_g   ?? 0;
+  return {
+    calories:    a.estimated_total_calories,
+    protein_g, carbs_g, fat_g, fiber_g,
+    proteinDots: calcDots(protein_g, DAILY_TARGETS.protein_g),
+    carbsDots:   calcDots(carbs_g,   DAILY_TARGETS.carbs_g),
+    fatDots:     calcDots(fat_g,     DAILY_TARGETS.fat_g),
+    fiberDots:   calcDots(fiber_g,   DAILY_TARGETS.fiber_g),
+  };
+}
 
 async function analyseImage(uri: string): Promise<{
   name: string;
@@ -51,25 +66,11 @@ async function analyseImage(uri: string): Promise<{
 }> {
   const response = await foodApi.analyzeImage(uri);
   const a = response.analysis;
-  const protein_g = a.macros.protein_g ?? 0;
-  const carbs_g   = a.macros.carbs_g   ?? 0;
-  const fat_g     = a.macros.fat_g     ?? 0;
-  const fiber_g   = a.macros.fibre_g   ?? 0;
   return {
     inferenceLogId: response.inference_log_id,
     analysis: a,
     name: a.food_name,
-    nutrition: {
-      calories:    a.estimated_total_calories,
-      protein_g,
-      carbs_g,
-      fat_g,
-      fiber_g,
-      proteinDots: calcDots(protein_g, DAILY_TARGETS.protein_g),
-      carbsDots:   calcDots(carbs_g,   DAILY_TARGETS.carbs_g),
-      fatDots:     calcDots(fat_g,     DAILY_TARGETS.fat_g),
-      fiberDots:   calcDots(fiber_g,   DAILY_TARGETS.fiber_g),
-    },
+    nutrition: geminiAnalysisToNutrition(a),
   };
 }
 
@@ -83,7 +84,10 @@ export function MealLogModal({ visible, onClose, onSave, prefillType }: Props) {
   const [editName, setEditName]     = useState("");
   const [inferenceLogId, setInferenceLogId] = useState<string | null>(null);
   const [currentAnalysis, setCurrentAnalysis] = useState<GeminiAnalysis | null>(null);
-  const [saving, setSaving]         = useState(false);
+  const [saving, setSaving]             = useState(false);
+  const [chatMessages, setChatMessages] = useState<{ role: string; content: string }[]>([]);
+  const [chatInput, setChatInput]       = useState("");
+  const [chatLoading, setChatLoading]   = useState(false);
 
   function reset() {
     setStep("type");
@@ -94,6 +98,9 @@ export function MealLogModal({ visible, onClose, onSave, prefillType }: Props) {
     setInferenceLogId(null);
     setCurrentAnalysis(null);
     setSaving(false);
+    setChatMessages([]);
+    setChatInput("");
+    setChatLoading(false);
   }
 
   function handleClose() {
@@ -169,6 +176,45 @@ export function MealLogModal({ visible, onClose, onSave, prefillType }: Props) {
     }
   }
 
+  async function handleChatSend() {
+    if (!chatInput.trim() || !currentAnalysis) return;
+    const userMsg = { role: "user", content: chatInput.trim() };
+    const updatedMessages = [...chatMessages, userMsg];
+    setChatMessages(updatedMessages);
+    setChatInput("");
+    setChatLoading(true);
+    try {
+      const revised = await foodApi.refineAnalysis({
+        prior_analysis: currentAnalysis,
+        messages: updatedMessages,
+        inference_log_id: inferenceLogId ?? undefined,
+      });
+      setCurrentAnalysis(revised);
+      setChatMessages([
+        ...updatedMessages,
+        { role: "model", content: `Updated: ${revised.food_name}, ${revised.estimated_total_calories} kcal` },
+      ]);
+    } catch {
+      Alert.alert("Couldn't refine", "Check your connection and try again");
+      setChatMessages(chatMessages);
+    } finally {
+      setChatLoading(false);
+    }
+  }
+
+  function goBackFromChat() {
+    if (currentAnalysis) {
+      setResult({ name: currentAnalysis.food_name, nutrition: geminiAnalysisToNutrition(currentAnalysis) });
+      setEditName(currentAnalysis.food_name);
+    }
+    setStep("results");
+  }
+
+  function handleChipTap(flag: string) {
+    setChatInput(`I think the ${flag.replace(/_/g, " ")} is different — `);
+    setStep("chat");
+  }
+
   return (
     <Modal
       visible={visible}
@@ -210,6 +256,20 @@ export function MealLogModal({ visible, onClose, onSave, prefillType }: Props) {
                 onConfirm={handleConfirm}
                 onBack={() => setStep("type")}
                 saving={saving}
+                ambiguityFlags={currentAnalysis?.ambiguity_flags ?? []}
+                onChipTap={handleChipTap}
+              />
+            )}
+
+            {step === "chat" && currentAnalysis && (
+              <ChatStep
+                messages={chatMessages}
+                input={chatInput}
+                onInputChange={setChatInput}
+                onSend={handleChatSend}
+                loading={chatLoading}
+                onBack={goBackFromChat}
+                analysis={currentAnalysis}
               />
             )}
           </View>
@@ -332,6 +392,7 @@ function AnalyzingStep() {
 function ResultsStep({
   mealType, result, imageUri,
   editName, onEditName, onConfirm, onBack, saving,
+  ambiguityFlags, onChipTap,
 }: {
   mealType: MealType;
   result: { name: string; nutrition: NutritionInfo };
@@ -341,6 +402,8 @@ function ResultsStep({
   onConfirm: () => void;
   onBack: () => void;
   saving: boolean;
+  ambiguityFlags: string[];
+  onChipTap: (flag: string) => void;
 }) {
   const n = result.nutrition;
 
@@ -381,6 +444,25 @@ function ResultsStep({
         <MacroRow label="Fiber"   dots={n.fiberDots}   grams={n.fiber_g}   unit="g" />
       </View>
 
+      {/* Ambiguity chips — tap to refine in chat */}
+      {ambiguityFlags.length > 0 && (
+        <View style={styles.chipsSection}>
+          <Text style={styles.chipsLabel}>Gemini wasn't sure about:</Text>
+          <View style={styles.chipsRow}>
+            {ambiguityFlags.map((flag) => (
+              <TouchableOpacity
+                key={flag}
+                style={styles.chip}
+                onPress={() => onChipTap(flag)}
+                accessibilityLabel={`Refine ${flag.replace(/_/g, " ")}`}
+              >
+                <Text style={styles.chipText}>{flag.replace(/_/g, " ")}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      )}
+
       {/* Confirm button */}
       <TouchableOpacity
         style={[styles.confirmBtn, saving && styles.confirmBtnSaving]}
@@ -420,6 +502,85 @@ function MacroRow({
       </View>
       <Text style={styles.macroGrams}>{Math.round(grams)}{unit}</Text>
     </View>
+  );
+}
+
+// ─── Step: Chat ───────────────────────────────────────────────
+
+function ChatStep({
+  messages, input, onInputChange, onSend, loading, onBack, analysis,
+}: {
+  messages: { role: string; content: string }[];
+  input: string;
+  onInputChange: (s: string) => void;
+  onSend: () => void;
+  loading: boolean;
+  onBack: () => void;
+  analysis: GeminiAnalysis;
+}) {
+  const scrollRef = useRef<ScrollView>(null);
+
+  return (
+    <ScrollView
+      ref={scrollRef}
+      onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={styles.stepContent}
+    >
+      <TouchableOpacity onPress={onBack} style={styles.backRow}>
+        <Ionicons name="arrow-back" size={16} color={colors.textMuted} />
+        <Text style={styles.backText}>Back to results</Text>
+      </TouchableOpacity>
+
+      <Text style={styles.stepTitle}>Refine estimate</Text>
+
+      <View style={styles.chatSummaryBar}>
+        <Text style={styles.chatSummaryName}>{analysis.food_name}</Text>
+        <Text style={styles.chatSummaryCal}>{analysis.estimated_total_calories} kcal</Text>
+      </View>
+
+      {messages.length === 0 && (
+        <Text style={styles.chatHint}>
+          Tell me what to correct — portion size, ingredients, cooking method…
+        </Text>
+      )}
+
+      {messages.map((msg, i) => (
+        <View
+          key={i}
+          style={[styles.bubble, msg.role === "user" ? styles.bubbleUser : styles.bubbleModel]}
+        >
+          <Text style={[styles.bubbleText, msg.role === "user" ? styles.bubbleTextUser : styles.bubbleTextModel]}>
+            {msg.content}
+          </Text>
+        </View>
+      ))}
+
+      {loading && (
+        <ActivityIndicator color={colors.accent} size="small" style={styles.chatSpinner} />
+      )}
+
+      <View style={styles.chatInputRow}>
+        <TextInput
+          style={styles.chatInput}
+          value={input}
+          onChangeText={onInputChange}
+          placeholder="e.g. It was a smaller portion…"
+          placeholderTextColor={colors.textLight}
+          multiline
+          editable={!loading}
+          accessibilityLabel="Chat input"
+        />
+        <TouchableOpacity
+          style={[styles.sendBtn, (!input.trim() || loading) && styles.sendBtnDisabled]}
+          onPress={onSend}
+          disabled={!input.trim() || loading}
+          accessibilityLabel="Send message"
+        >
+          <Ionicons name="arrow-up" size={18} color={colors.text} />
+        </TouchableOpacity>
+      </View>
+    </ScrollView>
   );
 }
 
@@ -706,4 +867,118 @@ const styles = StyleSheet.create({
     fontSize: 20,
     color: colors.text,
   },
+
+  // ── Ambiguity chips ──
+  chipsSection: { gap: spacing.xs },
+  chipsLabel: {
+    fontFamily: fonts.body400,
+    fontSize: 12,
+    color: colors.textMuted,
+  },
+  chipsRow: {
+    flexDirection: "row" as const,
+    flexWrap: "wrap" as const,
+    gap: spacing.xs,
+  },
+  chip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: radius.pill,
+    borderWidth: 1.5,
+    borderColor: colors.pastelBlueBorder,
+    backgroundColor: colors.pastelBlue,
+  },
+  chipText: {
+    fontFamily: fonts.body500,
+    fontSize: 12,
+    color: colors.text,
+  },
+
+  // ── Chat step ──
+  chatSummaryBar: {
+    flexDirection: "row" as const,
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: colors.bgSecondary,
+    borderRadius: radius.md,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  chatSummaryName: {
+    fontFamily: fonts.body600,
+    fontSize: 14,
+    color: colors.text,
+    flex: 1,
+  },
+  chatSummaryCal: {
+    fontFamily: fonts.heading700,
+    fontSize: 15,
+    color: colors.accent,
+  },
+  chatHint: {
+    fontFamily: fonts.body400,
+    fontSize: 13,
+    color: colors.textMuted,
+    fontStyle: "italic" as const,
+    textAlign: "center" as const,
+    paddingVertical: spacing.lg,
+  },
+  bubble: {
+    maxWidth: "80%",
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.lg,
+  },
+  bubbleUser: {
+    alignSelf: "flex-end" as const,
+    backgroundColor: colors.softPink,
+    borderWidth: 1.5,
+    borderColor: colors.softPinkBorder,
+  },
+  bubbleModel: {
+    alignSelf: "flex-start" as const,
+    backgroundColor: colors.bgSecondary,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+  },
+  bubbleText: {
+    fontFamily: fonts.body400,
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  bubbleTextUser: { color: colors.text },
+  bubbleTextModel: { color: colors.textMuted },
+  chatSpinner: { alignSelf: "flex-start" as const, marginTop: spacing.xs },
+  chatInputRow: {
+    flexDirection: "row" as const,
+    alignItems: "flex-end" as const,
+    gap: spacing.sm,
+    marginTop: spacing.sm,
+  },
+  chatInput: {
+    flex: 1,
+    fontFamily: fonts.body400,
+    fontSize: 15,
+    color: colors.text,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    borderRadius: radius.lg,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    maxHeight: 100,
+    backgroundColor: colors.bgSecondary,
+  },
+  sendBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.softPink,
+    borderWidth: 1.5,
+    borderColor: colors.softPinkBorder,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+  },
+  sendBtnDisabled: { opacity: 0.4 },
 });

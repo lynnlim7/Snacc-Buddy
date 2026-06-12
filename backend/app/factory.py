@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi_limiter import FastAPILimiter
 
-from app.api.routes import analyze, analytics, food
+from app.api.routes import analyze, analytics, chat, food
 from app.ai_governance.api.router import governance_router
 from app.core.auth import auth_backend, fastapi_users
 from app.core.config import settings
@@ -47,6 +47,7 @@ def create_app() -> FastAPI:
     app.include_router(fastapi_users.get_users_router(UserRead, UserUpdate), prefix="/users", tags=["users"])
     app.include_router(analyze.router, prefix="/api/v1/food", tags=["food"])
     app.include_router(food.router, prefix="/api/v1/food", tags=["food"])
+    app.include_router(chat.router, prefix="/api/v1/food", tags=["food"])
     app.include_router(analytics.router, prefix="/api/v1/analytics", tags=["analytics"])
     app.include_router(governance_router)
 

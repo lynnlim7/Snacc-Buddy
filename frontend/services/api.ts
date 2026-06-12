@@ -93,4 +93,13 @@ export const foodApi = {
     const { data } = await client.get<WeeklySummary>("/api/v1/analytics/weekly");
     return data;
   },
+
+  refineAnalysis: async (payload: {
+    prior_analysis: GeminiAnalysis;
+    messages: Array<{ role: string; content: string }>;
+    inference_log_id?: string;
+  }): Promise<GeminiAnalysis> => {
+    const { data } = await client.post<GeminiAnalysis>("/api/v1/food/chat", payload);
+    return data;
+  },
 };
