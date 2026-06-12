@@ -252,6 +252,7 @@ function MealRow({
       ? meal.mood.filter((m) => m !== mood)
       : [...meal.mood, mood];
     updateMealMood(date, meal.id, next);
+    foodApi.patchLog(meal.id, { mood: next }).catch(() => {});
   }
 
   return (
@@ -315,7 +316,10 @@ function MealRow({
           {/* Notes sticky patch */}
           <NotesPatch
             note={meal.note}
-            onSave={(text) => updateMealNote(date, meal.id, text)}
+            onSave={(text) => {
+              updateMealNote(date, meal.id, text);
+              foodApi.patchLog(meal.id, { notes: text }).catch(() => {});
+            }}
           />
         </View>
       )}

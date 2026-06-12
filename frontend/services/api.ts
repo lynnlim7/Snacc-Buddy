@@ -106,6 +106,10 @@ export const foodApi = {
     return data.streak;
   },
 
+  patchLog: async (logId: string, data: { notes?: string | null; mood?: string[] }): Promise<void> => {
+    await client.patch(`/api/v1/food/logs/${logId}`, data);
+  },
+
   deleteLog: async (logId: string): Promise<void> => {
     await client.delete(`/api/v1/food/logs/${logId}`);
   },

@@ -33,6 +33,7 @@ class FoodLog(Base):
     confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
     ambiguity_flags: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    mood: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
     raw_response: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     image_url: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
     # Governance cross-domain link — nullable; SET NULL if inference log is ever purged

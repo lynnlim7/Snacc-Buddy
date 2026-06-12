@@ -55,6 +55,8 @@ export interface FoodLogResponse {
   carbs_g: number | null;
   fat_g: number | null;
   fibre_g: number | null;
+  notes: string | null;
+  mood: string[];
   image_url: string[] | null;
   inference_log_id: string | null;
   created_at: string;

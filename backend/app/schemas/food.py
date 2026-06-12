@@ -75,6 +75,7 @@ class FoodLogUpdate(BaseModel):
     carbs_g: float | None = None
     fat_g: float | None = None
     notes: str | None = None
+    mood: list[str] | None = None
 
 
 class FoodLogResponse(BaseModel):
@@ -100,6 +101,7 @@ class FoodLogResponse(BaseModel):
     confidence: float | None = None
     ambiguity_flags: list = []
     notes: str | None = None
+    mood: list = []
     image_url: list = []
     inference_log_id: uuid.UUID | None = None
     created_at: datetime

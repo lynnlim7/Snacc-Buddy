@@ -165,17 +165,10 @@ export const useDiaryStore = create<DiaryState>((set, get) => ({
     const { items } = await foodApi.getLogs(100, 0);
     const forDate = items.filter((log) => log.created_at.startsWith(date));
     set((state) => {
-      const existing = state.mealsByDate[date] ?? [];
-      const byId = Object.fromEntries(existing.map((m) => [m.id, m]));
       return {
         mealsByDate: {
           ...state.mealsByDate,
-          [date]: forDate.map((log) => {
-            const entry = foodLogToMealEntry(log);
-            const prev = byId[String(log.id)];
-            if (prev) { entry.note = prev.note; entry.mood = prev.mood; }
-            return entry;
-          }),
+          [date]: forDate.map((log) => foodLogToMealEntry(log)),
         },
       };
     });
@@ -231,7 +224,7 @@ function foodLogToMealEntry(log: FoodLogResponse): MealEntry {
       },
     }],
     totalCalories: calories,
-    mood: [],
-    note: "",
+    mood: log.mood ?? [],
+    note: log.notes ?? "",
   };
 }
