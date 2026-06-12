@@ -3,20 +3,46 @@ import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from "react-nat
 import { SafeAreaView } from "react-native-safe-area-context";
 import { PaperBackground } from "../../components/PaperBackground";
 import { useFoodStore } from "../../stores/foodStore";
+import { useUserStore, UserProfile } from "../../stores/userStore";
 import { DailySummary } from "../../types/food";
 import { colors, fonts, spacing, radius } from "../../constants/theme";
 
+const TRACK_HEIGHT = 100;
+
+// ─── TDEE goal (mirrors index.tsx logic) ─────────────────────
+
+function computeCalorieGoal(profile: UserProfile | null): number {
+  if (!profile) return 2000;
+  const { gender, age, height_cm, current_weight_kg, goal, lifestyle } = profile;
+  if (!age || !height_cm || !current_weight_kg) return 2000;
+  const genderOffset = gender === "male" ? 5 : gender === "female" ? -161 : -78;
+  const bmr = 10 * current_weight_kg + 6.25 * height_cm - 5 * age + genderOffset;
+  const activityMultiplier: Record<string, number> = {
+    wfh: 1.2, retired: 1.2, full_time: 1.375, part_time: 1.375,
+    student: 1.55, homemaker: 1.55,
+  };
+  const tdee = Math.round(bmr * (activityMultiplier[lifestyle ?? ""] ?? 1.375));
+  const goalAdjustment: Record<string, number> = {
+    lose_weight: -500, lose_fat: -300, gain_muscle: +300, eat_healthier: 0,
+  };
+  return Math.max(1200, tdee + (goalAdjustment[goal ?? ""] ?? 0));
+}
+
 // ─── Bar chart ────────────────────────────────────────────────
 
-function DayBar({ summary, maxCalories }: { summary: DailySummary; maxCalories: number }) {
+function BarTrack({ summary, maxCalories }: { summary: DailySummary; maxCalories: number }) {
   const pct = maxCalories > 0 ? (summary.total_calories / maxCalories) * 100 : 0;
-  const dayLabel = new Date(summary.date).toLocaleDateString("en-US", { weekday: "short" });
-
   return (
-    <View style={styles.barWrapper}>
-      <View style={styles.barTrack}>
-        <View style={[styles.barFill, { height: `${pct}%` as any }]} />
-      </View>
+    <View style={styles.barTrack}>
+      <View style={[styles.barFill, { height: `${pct}%` as any }]} />
+    </View>
+  );
+}
+
+function BarLabel({ summary }: { summary: DailySummary }) {
+  const dayLabel = new Date(summary.date + "T12:00:00").toLocaleDateString("en-US", { weekday: "short" });
+  return (
+    <View style={styles.barLabelWrap}>
       <Text style={styles.barLabel}>{dayLabel}</Text>
       <Text style={styles.barCal}>{summary.total_calories > 0 ? summary.total_calories : ""}</Text>
     </View>
@@ -41,6 +67,8 @@ function MacroChip({ label, value, unit }: { label: string; value: number; unit:
 export default function AnalyticsScreen() {
   const { weeklySummary, dailySummary, isLoadingAnalytics, fetchWeeklySummary, fetchDailySummary } =
     useFoodStore();
+  const profile     = useUserStore((s) => s.profile);
+  const calorieGoal = computeCalorieGoal(profile);
 
   useEffect(() => {
     fetchWeeklySummary();
@@ -48,8 +76,15 @@ export default function AnalyticsScreen() {
   }, []);
 
   const maxCalories = weeklySummary
-    ? Math.max(...weeklySummary.week.map((d) => d.total_calories), 1)
-    : 1;
+    ? Math.max(...weeklySummary.week.map((d) => d.total_calories), calorieGoal, 1)
+    : calorieGoal;
+
+  // Goal line position as % from bottom of track area (clamped 0–100)
+  const goalLinePct = Math.min((calorieGoal / maxCalories) * 100, 100);
+
+  const todayReached = dailySummary
+    ? Math.round((dailySummary.total_calories / calorieGoal) * 100)
+    : 0;
 
   return (
     <PaperBackground>
@@ -71,6 +106,9 @@ export default function AnalyticsScreen() {
                 {dailySummary.total_calories}
                 <Text style={styles.calorieUnit}> kcal</Text>
               </Text>
+              <Text style={styles.goalCaption}>
+                Goal: {calorieGoal.toLocaleString()} kcal · {todayReached}% reached
+              </Text>
               <View style={styles.macroRow}>
                 <MacroChip label="Protein" value={dailySummary.total_protein_g} unit="g" />
                 <MacroChip label="Carbs"   value={dailySummary.total_carbs_g}   unit="g" />
@@ -82,9 +120,30 @@ export default function AnalyticsScreen() {
           {weeklySummary && (
             <View style={styles.card}>
               <Text style={styles.cardLabel}>Past 7 days</Text>
-              <View style={styles.chartRow}>
+
+              {/* Track area with goal line overlay */}
+              <View style={styles.trackArea}>
+                {/* Goal line */}
+                <View
+                  style={[styles.goalLine, { bottom: `${goalLinePct}%` as any }]}
+                  pointerEvents="none"
+                >
+                  <View style={styles.goalLineDash} />
+                  <Text style={styles.goalLineLabel}>{calorieGoal.toLocaleString()}</Text>
+                </View>
+
+                {/* Bars */}
+                <View style={styles.trackRow}>
+                  {weeklySummary.week.map((d) => (
+                    <BarTrack key={d.date} summary={d} maxCalories={maxCalories} />
+                  ))}
+                </View>
+              </View>
+
+              {/* Day + calorie labels */}
+              <View style={styles.labelRow}>
                 {weeklySummary.week.map((d) => (
-                  <DayBar key={d.date} summary={d} maxCalories={maxCalories} />
+                  <BarLabel key={d.date} summary={d} />
                 ))}
               </View>
             </View>
@@ -142,6 +201,12 @@ const styles = StyleSheet.create({
     fontSize:   28,
     color:      colors.textMuted,
   },
+  goalCaption: {
+    fontFamily: fonts.body500,
+    fontSize:   13,
+    color:      colors.textMuted,
+    marginTop:  -spacing.sm,
+  },
   macroRow: {
     flexDirection: "row",
     gap:           spacing.sm,
@@ -173,20 +238,19 @@ const styles = StyleSheet.create({
   },
 
   // ── Bar chart ──
-  chartRow: {
+  trackArea: {
+    position: "relative",
+    height:   TRACK_HEIGHT,
+  },
+  trackRow: {
     flexDirection: "row",
     alignItems:    "flex-end",
-    height:        120,
+    height:        TRACK_HEIGHT,
     gap:           spacing.xs,
-  },
-  barWrapper: {
-    flex:        1,
-    alignItems:  "center",
-    gap:         spacing.xs,
   },
   barTrack: {
     flex:            1,
-    width:           "100%",
+    height:          "100%",
     backgroundColor: colors.border,
     borderRadius:    radius.sm,
     justifyContent:  "flex-end",
@@ -197,6 +261,16 @@ const styles = StyleSheet.create({
     borderRadius:    radius.sm,
     minHeight:       4,
   },
+  labelRow: {
+    flexDirection: "row",
+    gap:           spacing.xs,
+    marginTop:     -spacing.xs,
+  },
+  barLabelWrap: {
+    flex:        1,
+    alignItems:  "center",
+    gap:         2,
+  },
   barLabel: {
     fontFamily: fonts.body500,
     fontSize:   11,
@@ -206,5 +280,29 @@ const styles = StyleSheet.create({
     fontFamily: fonts.body400,
     fontSize:   10,
     color:      colors.textLight,
+  },
+
+  // ── Goal line ──
+  goalLine: {
+    position:      "absolute",
+    left:          0,
+    right:         0,
+    flexDirection: "row",
+    alignItems:    "center",
+    zIndex:        1,
+  },
+  goalLineDash: {
+    flex:           1,
+    height:         1.5,
+    borderTopWidth: 1.5,
+    borderStyle:    "dashed",
+    borderColor:    colors.accentBorder,
+  },
+  goalLineLabel: {
+    fontFamily:  fonts.body600,
+    fontSize:    10,
+    color:       colors.accentBorder,
+    marginLeft:  4,
+    lineHeight:  12,
   },
 });
