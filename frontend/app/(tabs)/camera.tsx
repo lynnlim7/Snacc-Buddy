@@ -25,7 +25,7 @@ const MEAL_TYPES: MealType[] = ["Breakfast", "Lunch", "Dinner", "Snack", "Desser
 
 export default function CameraScreen() {
   const router = useRouter();
-  const { isAnalyzing, lastAnalyzed, analyzeImage } = useFoodStore();
+  const { isAnalyzing, lastAnalyzed, analyzeImage, clearAnalysis } = useFoodStore();
   const addMeal = useDiaryStore((s) => s.addMeal);
 
   const [pickedUri,   setPickedUri]   = useState<string | null>(null);
@@ -90,6 +90,7 @@ export default function CameraScreen() {
         mood: [],
         note: "",
       });
+      clearAnalysis();
       router.replace("/(tabs)");
     } catch {
       Alert.alert("Couldn't save", "Check your connection and try again.");

@@ -24,6 +24,7 @@ interface FoodState {
 interface FoodActions {
   setUserId: (id: string) => void;
   analyzeImage: (imageUri: string) => Promise<AnalyzeResponse | null>;
+  clearAnalysis: () => void;
   fetchLogs: (reset?: boolean) => Promise<void>;
   fetchMoreLogs: () => Promise<void>;
   fetchDailySummary: (date?: string) => Promise<void>;
@@ -48,6 +49,8 @@ export const useFoodStore = create<FoodState & FoodActions>((set, get) => ({
   error: null,
 
   setUserId: (id) => set({ userId: id }),
+
+  clearAnalysis: () => set({ lastAnalyzed: null, isAnalyzing: false }),
 
   analyzeImage: async (imageUri) => {
     set({ isAnalyzing: true, error: null });

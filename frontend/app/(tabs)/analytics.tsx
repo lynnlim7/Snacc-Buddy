@@ -1,6 +1,7 @@
-import { useEffect } from "react";
+import { useCallback } from "react";
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useFocusEffect } from "expo-router";
 import { PaperBackground } from "../../components/PaperBackground";
 import { useFoodStore } from "../../stores/foodStore";
 import { useUserStore, UserProfile } from "../../stores/userStore";
@@ -70,10 +71,12 @@ export default function AnalyticsScreen() {
   const profile     = useUserStore((s) => s.profile);
   const calorieGoal = computeCalorieGoal(profile);
 
-  useEffect(() => {
-    fetchWeeklySummary();
-    fetchDailySummary();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      fetchWeeklySummary();
+      fetchDailySummary();
+    }, [])
+  );
 
   const maxCalories = weeklySummary
     ? Math.max(...weeklySummary.week.map((d) => d.total_calories), calorieGoal, 1)
