@@ -50,37 +50,33 @@ def upgrade() -> None:
     # Create enums explicitly so they are shared across tables and
     # can be reused by future modules without schema changes.
 
-    model_provider_enum = postgresql.ENUM(
-        "google", "openai", "anthropic", "internal",
-        name="model_provider_enum",
-        create_type=True,
-    )
-    model_status_enum = postgresql.ENUM(
-        "active", "deprecated", "retired",
-        name="model_status_enum",
-        create_type=True,
-    )
-    risk_tier_enum = postgresql.ENUM(
-        "low", "medium", "high",
-        name="risk_tier_enum",
-        create_type=True,
-    )
-    prompt_status_enum = postgresql.ENUM(
-        "draft", "active", "retired",
-        name="prompt_status_enum",
-        create_type=True,
-    )
-    inference_status_enum = postgresql.ENUM(
-        "success", "failed", "cache_hit", "timeout", "parse_error",
-        name="inference_status_enum",
-        create_type=True,
-    )
-
-    model_provider_enum.create(op.get_bind(), checkfirst=True)
-    model_status_enum.create(op.get_bind(), checkfirst=True)
-    risk_tier_enum.create(op.get_bind(), checkfirst=True)
-    prompt_status_enum.create(op.get_bind(), checkfirst=True)
-    inference_status_enum.create(op.get_bind(), checkfirst=True)
+    # PostgreSQL has no CREATE TYPE IF NOT EXISTS. Use PL/pgSQL DO blocks instead.
+    # This is safe to re-run: catches duplicate_object and continues.
+    op.execute(sa.text("""
+        DO $$ BEGIN
+            CREATE TYPE model_provider_enum AS ENUM ('google', 'openai', 'anthropic', 'internal');
+        EXCEPTION WHEN duplicate_object THEN null; END $$
+    """))
+    op.execute(sa.text("""
+        DO $$ BEGIN
+            CREATE TYPE model_status_enum AS ENUM ('active', 'deprecated', 'retired');
+        EXCEPTION WHEN duplicate_object THEN null; END $$
+    """))
+    op.execute(sa.text("""
+        DO $$ BEGIN
+            CREATE TYPE risk_tier_enum AS ENUM ('low', 'medium', 'high');
+        EXCEPTION WHEN duplicate_object THEN null; END $$
+    """))
+    op.execute(sa.text("""
+        DO $$ BEGIN
+            CREATE TYPE prompt_status_enum AS ENUM ('draft', 'active', 'retired');
+        EXCEPTION WHEN duplicate_object THEN null; END $$
+    """))
+    op.execute(sa.text("""
+        DO $$ BEGIN
+            CREATE TYPE inference_status_enum AS ENUM ('success', 'failed', 'cache_hit', 'timeout', 'parse_error');
+        EXCEPTION WHEN duplicate_object THEN null; END $$
+    """))
 
     # ── 2. ai_models ─────────────────────────────────────────────────────────
     op.create_table(

@@ -21,6 +21,8 @@ dependencies = [
     "tenacity>=9.0.0",
     "redis[asyncio]>=5.0.0",
     "fastapi-limiter>=0.1.6,<0.2.0",
+    "structlog>=26.1.0",
+    "cryptography>=47.0.0",
 ]
 
 [dependency-groups]
