@@ -9,7 +9,7 @@
  *   - Sub-items per meal (food photo names)
  *   - Floating "+" FAB → opens MealLogModal
  */
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import {
   ScrollView,
   StyleSheet,
@@ -150,7 +150,7 @@ function MoodSection({
 }) {
   return (
     <View style={styles.moodSection}>
-      <Text style={styles.moodLabel}>mood today</Text>
+      <Text style={styles.moodLabel}>mood</Text>
       <View style={styles.moodGrid}>
         {MOODS.map((mood) => {
           const active = moods.includes(mood);
@@ -182,20 +182,32 @@ function NotesPatch({
   onSave: (text: string) => void;
 }) {
   const [text, setText] = useState(note);
+  const dirty = text.trim() !== note.trim();
+
+  // Sync if note was externally reset (e.g. backend refresh)
+  useEffect(() => { setText(note); }, [note]);
+
+  const handleSave = useCallback(() => { if (dirty) onSave(text); }, [dirty, onSave, text]);
 
   return (
     <View style={styles.notesPatch}>
-      {/* Tape strips */}
       <View style={styles.tapeLeft} />
       <View style={styles.tapeRight} />
 
-      <Text style={styles.notesLabel}>today's note</Text>
+      <View style={styles.notesHeader}>
+        <Text style={styles.notesLabel}>note</Text>
+        {dirty && (
+          <TouchableOpacity onPress={handleSave} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
+            <Text style={styles.notesSave}>save</Text>
+          </TouchableOpacity>
+        )}
+      </View>
       <TextInput
         style={styles.notesInput}
         value={text}
         onChangeText={setText}
-        onBlur={() => onSave(text)}
-        placeholder="late night ramen with friends.."
+        onBlur={handleSave}
+        placeholder="how was this meal?.."
         placeholderTextColor={colors.textLight}
         multiline
         maxLength={200}
@@ -904,12 +916,22 @@ const styles = StyleSheet.create({
     borderColor:     "rgba(200, 185, 165, 0.45)",
     transform:       [{ rotate: "3deg" }],
   },
+  notesHeader: {
+    flexDirection:  "row",
+    justifyContent: "space-between",
+    alignItems:     "center",
+  },
   notesLabel: {
     fontFamily:    fonts.body600,
     fontSize:      12,
     color:         "#8C7B6A",
     textTransform: "uppercase",
     letterSpacing: 0.8,
+  },
+  notesSave: {
+    fontFamily: fonts.body600,
+    fontSize:   12,
+    color:      colors.accentDark,
   },
   notesInput: {
     fontFamily: fonts.heading400,
