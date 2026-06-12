@@ -44,6 +44,7 @@ interface DiaryState {
   /** Key = "YYYY-MM-DD", value = meals for that day */
   mealsByDate: Record<string, MealEntry[]>;
   streak: number;
+  setStreak: (n: number) => void;
 
   getMealsForDate: (date: string) => MealEntry[];
   getTotalCaloriesForDate: (date: string) => number;
@@ -59,7 +60,8 @@ interface DiaryState {
 
 export const useDiaryStore = create<DiaryState>((set, get) => ({
   mealsByDate: {},
-  streak: 3, // TODO: compute from backend
+  streak: 0,
+  setStreak: (n) => set({ streak: n }),
 
   getMealsForDate: (date) => get().mealsByDate[date] ?? [],
 

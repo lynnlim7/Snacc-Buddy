@@ -34,6 +34,7 @@ import {
   type MealType,
 } from "../../stores/diaryStore";
 import { useOnboardingStore } from "../../stores/onboardingStore";
+import { useUserStore, type UserProfile } from "../../stores/userStore";
 import { colors, fonts, spacing, radius } from "../../constants/theme";
 
 // ─── Constants ────────────────────────────────────────────────
@@ -42,7 +43,33 @@ const { height: SCREEN_H } = Dimensions.get("window");
 const LINE_SPACING = 38;
 const HEADER_OFFSET = 220; // ruled lines start below the header area
 const NUM_LINES = Math.ceil((SCREEN_H - HEADER_OFFSET) / LINE_SPACING) + 4;
-const CALORIE_GOAL = 2000; // TODO: pull from user profile
+function computeCalorieGoal(profile: UserProfile | null): number {
+  if (!profile) return 2000;
+  const { gender, age, height_cm, current_weight_kg, goal, lifestyle } = profile;
+  if (!age || !height_cm || !current_weight_kg) return 2000;
+
+  // Mifflin-St Jeor BMR
+  const genderOffset = gender === "male" ? 5 : gender === "female" ? -161 : -78;
+  const bmr = 10 * current_weight_kg + 6.25 * height_cm - 5 * age + genderOffset;
+
+  const activityMultiplier: Record<string, number> = {
+    wfh:       1.2,
+    retired:   1.2,
+    full_time: 1.375,
+    part_time: 1.375,
+    student:   1.55,
+    homemaker: 1.55,
+  };
+  const tdee = Math.round(bmr * (activityMultiplier[lifestyle ?? ""] ?? 1.375));
+
+  const goalAdjustment: Record<string, number> = {
+    lose_weight:   -500,
+    lose_fat:      -300,
+    gain_muscle:   +300,
+    eat_healthier: 0,
+  };
+  return Math.max(1200, tdee + (goalAdjustment[goal ?? ""] ?? 0));
+}
 
 function getGreeting(): string {
   const h = new Date().getHours();
@@ -336,17 +363,23 @@ export default function DiaryScreen() {
   // Reactive store selectors
   const meals                = useDiaryStore((s) => s.mealsByDate[today] ?? EMPTY_MEALS);
   const streak               = useDiaryStore((s) => s.streak);
+  const setStreak            = useDiaryStore((s) => s.setStreak);
   const addMeal              = useDiaryStore((s) => s.addMeal);
   const deleteMeal           = useDiaryStore((s) => s.deleteMeal);
   const addPhotoToMeal       = useDiaryStore((s) => s.addPhotoToMeal);
   const deletePhotoFromMeal  = useDiaryStore((s) => s.deletePhotoFromMeal);
   const loadLogsFromBackend  = useDiaryStore((s) => s.loadLogsFromBackend);
   const userName             = useOnboardingStore((s) => s.name);
+  const profile              = useUserStore((s) => s.profile);
+  const calorieGoal          = computeCalorieGoal(profile);
 
   useEffect(() => {
     loadLogsFromBackend(today);
     foodApi.getDailySummary(today)
       .then((s) => setDailyCalories(s.total_calories))
+      .catch(() => {});
+    foodApi.getStreak()
+      .then(setStreak)
       .catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -449,7 +482,7 @@ export default function DiaryScreen() {
           <Text style={styles.dateText}>{dateDisplay}</Text>
 
           {/* ── Calorie card ── */}
-          <CalorieCard total={dailyCalories} goal={CALORIE_GOAL} />
+          <CalorieCard total={dailyCalories} goal={calorieGoal} />
 
           {/* ── Meals section ── */}
           <Text style={styles.mealsHeader}>Meals</Text>

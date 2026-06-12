@@ -24,3 +24,6 @@ class AnalyticsService:
             for target_date in days
         ]
         return WeeklySummaryResponse(week=summaries)
+
+    async def get_streak(self, user_id: str) -> int:
+        return await self.repo.get_streak(user_id)

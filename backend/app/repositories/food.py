@@ -1,5 +1,5 @@
 import uuid
-from datetime import date
+from datetime import date, timedelta
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -96,6 +96,35 @@ class FoodRepository:
         await self.db.delete(log)
         await self.db.commit()
         return True
+
+    async def get_streak(self, user_id: str) -> int:
+        today = date.today()
+        q = (
+            select(func.date(FoodLog.created_at).label("log_date"))
+            .where(FoodLog.user_id == user_id)
+            .group_by(func.date(FoodLog.created_at))
+            .order_by(func.date(FoodLog.created_at).desc())
+        )
+        result = await self.db.execute(q)
+        log_dates: set[date] = set()
+        for row in result.all():
+            d = row.log_date
+            log_dates.add(date.fromisoformat(d) if isinstance(d, str) else d)
+
+        if not log_dates:
+            return 0
+
+        # Start from today; fall back to yesterday to preserve streak before first log
+        start = today if today in log_dates else today - timedelta(days=1)
+        if start not in log_dates:
+            return 0
+
+        streak = 0
+        current = start
+        while current in log_dates:
+            streak += 1
+            current -= timedelta(days=1)
+        return streak
 
     async def get_daily_summary(self, user_id: str, target_date: date) -> dict:
         q = select(

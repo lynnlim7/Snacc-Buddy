@@ -45,6 +45,15 @@ async def get_daily_summary(
     return summary
 
 
+@router.get("/streak")
+async def get_streak(
+    user: User = Depends(current_active_user),
+    service: AnalyticsService = Depends(get_analytics_service),
+):
+    streak = await service.get_streak(user_id=str(user.id))
+    return {"streak": streak}
+
+
 @router.get("/weekly", response_model=WeeklySummaryResponse)
 async def get_weekly_summary(
     user: User = Depends(current_active_user),

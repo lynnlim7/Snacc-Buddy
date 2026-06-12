@@ -94,6 +94,11 @@ export const foodApi = {
     return data;
   },
 
+  getStreak: async (): Promise<number> => {
+    const { data } = await client.get<{ streak: number }>("/api/v1/analytics/streak");
+    return data.streak;
+  },
+
   refineAnalysis: async (payload: {
     prior_analysis: GeminiAnalysis;
     messages: Array<{ role: string; content: string }>;
