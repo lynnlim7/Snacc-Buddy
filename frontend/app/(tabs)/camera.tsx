@@ -1,11 +1,14 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   ActivityIndicator,
   Alert,
   Image,
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -18,19 +21,115 @@ import { NutritionSummary } from "../../components/NutritionSummary";
 import { useFoodStore } from "../../stores/foodStore";
 import { useDiaryStore, todayKey, type MealType } from "../../stores/diaryStore";
 import { foodApi } from "../../services/api";
-import { DailySummary } from "../../types/food";
+import { DailySummary, GeminiAnalysis } from "../../types/food";
 import { colors, fonts, spacing, radius } from "../../constants/theme";
 
 const MEAL_TYPES: MealType[] = ["Breakfast", "Lunch", "Dinner", "Snack", "Dessert", "Supper"];
+
+// ─── Correction chat ──────────────────────────────────────────
+
+type ChatMsg = { role: "user" | "model"; content: string };
+
+function CorrectionChat({
+  analysis,
+  inferenceLogId,
+  onAnalysisUpdated,
+}: {
+  analysis: GeminiAnalysis;
+  inferenceLogId: string;
+  onAnalysisUpdated: (updated: GeminiAnalysis) => void;
+}) {
+  const [messages,  setMessages]  = useState<ChatMsg[]>([]);
+  const [input,     setInput]     = useState("");
+  const [refining,  setRefining]  = useState(false);
+
+  async function handleSend() {
+    const text = input.trim();
+    if (!text || refining) return;
+    const next: ChatMsg[] = [...messages, { role: "user", content: text }];
+    setMessages(next);
+    setInput("");
+    setRefining(true);
+    try {
+      const refined = await foodApi.refineAnalysis({
+        prior_analysis: analysis,
+        messages: next,
+        inference_log_id: inferenceLogId,
+      });
+      onAnalysisUpdated(refined);
+      setMessages([
+        ...next,
+        { role: "model", content: `Updated to: ${refined.food_name} · ${refined.estimated_total_calories} kcal` },
+      ]);
+    } catch {
+      setMessages([...next, { role: "model", content: "Couldn't update — check your connection and try again." }]);
+    } finally {
+      setRefining(false);
+    }
+  }
+
+  return (
+    <View style={styles.chatSection}>
+      <Text style={styles.chatLabel}>Something wrong?</Text>
+
+      {messages.length > 0 && (
+        <View style={styles.messageList}>
+          {messages.map((m, i) => (
+            <View
+              key={i}
+              style={[styles.bubble, m.role === "user" ? styles.bubbleUser : styles.bubbleModel]}
+            >
+              <Text style={[styles.bubbleText, m.role === "model" && styles.bubbleTextModel]}>
+                {m.content}
+              </Text>
+            </View>
+          ))}
+        </View>
+      )}
+
+      <View style={styles.chatInputRow}>
+        <TextInput
+          style={styles.chatInput}
+          value={input}
+          onChangeText={setInput}
+          placeholder="e.g. that's actually fried rice…"
+          placeholderTextColor={colors.textLight}
+          returnKeyType="send"
+          onSubmitEditing={handleSend}
+          editable={!refining}
+        />
+        <TouchableOpacity
+          style={[styles.sendBtn, (!input.trim() || refining) && styles.sendBtnDisabled]}
+          onPress={handleSend}
+          disabled={!input.trim() || refining}
+          accessibilityLabel="Send correction"
+        >
+          {refining
+            ? <ActivityIndicator size="small" color={colors.text} />
+            : <Ionicons name="arrow-up" size={18} color={colors.text} />
+          }
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+
+// ─── Screen ───────────────────────────────────────────────────
 
 export default function CameraScreen() {
   const router = useRouter();
   const { isAnalyzing, lastAnalyzed, analyzeImage, clearAnalysis } = useFoodStore();
   const addMeal = useDiaryStore((s) => s.addMeal);
 
-  const [pickedUri,   setPickedUri]   = useState<string | null>(null);
-  const [mealType,    setMealType]    = useState<MealType | null>(null);
-  const [saving,      setSaving]      = useState(false);
+  const [pickedUri,        setPickedUri]        = useState<string | null>(null);
+  const [mealType,         setMealType]         = useState<MealType | null>(null);
+  const [saving,           setSaving]           = useState(false);
+  const [currentAnalysis,  setCurrentAnalysis]  = useState<GeminiAnalysis | null>(null);
+
+  // Sync local analysis whenever a new image is analyzed
+  useEffect(() => {
+    if (lastAnalyzed) setCurrentAnalysis(lastAnalyzed.analysis);
+  }, [lastAnalyzed?.inference_log_id]);
 
   const pickFromLibrary = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -57,13 +156,13 @@ export default function CameraScreen() {
   };
 
   const handleSave = async () => {
-    if (!lastAnalyzed || !mealType) return;
+    if (!currentAnalysis || !lastAnalyzed || !mealType) return;
     setSaving(true);
     try {
       const saved = await foodApi.confirmLog({
         meal_type: mealType.toLowerCase(),
         image_urls: [],
-        analysis: lastAnalyzed.analysis,
+        analysis: currentAnalysis,
         inference_log_id: lastAnalyzed.inference_log_id,
       });
       const today = todayKey();
@@ -73,7 +172,7 @@ export default function CameraScreen() {
         photos: [{
           id: String(saved.id),
           uri: pickedUri ?? "",
-          name: saved.meal_name ?? lastAnalyzed.analysis.food_name,
+          name: saved.meal_name ?? currentAnalysis.food_name,
           nutrition: {
             calories:    saved.estimated_total_calories,
             protein_g:   saved.protein_g   ?? 0,
@@ -98,13 +197,13 @@ export default function CameraScreen() {
     }
   };
 
-  const previewSummary: DailySummary | null = lastAnalyzed
+  const previewSummary: DailySummary | null = currentAnalysis
     ? {
         date:            new Date().toISOString().slice(0, 10),
-        total_calories:  lastAnalyzed.analysis.estimated_total_calories,
-        total_protein_g: lastAnalyzed.analysis.macros.protein_g ?? 0,
-        total_carbs_g:   lastAnalyzed.analysis.macros.carbs_g   ?? 0,
-        total_fat_g:     lastAnalyzed.analysis.macros.fat_g     ?? 0,
+        total_calories:  currentAnalysis.estimated_total_calories,
+        total_protein_g: currentAnalysis.macros.protein_g ?? 0,
+        total_carbs_g:   currentAnalysis.macros.carbs_g   ?? 0,
+        total_fat_g:     currentAnalysis.macros.fat_g     ?? 0,
         meal_count:      1,
       }
     : null;
@@ -112,92 +211,107 @@ export default function CameraScreen() {
   return (
     <PaperBackground>
       <SafeAreaView style={styles.safe}>
-        <ScrollView
-          contentContainerStyle={styles.scroll}
-          showsVerticalScrollIndicator={false}
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
         >
-          <Text style={styles.heading}>Quick scan</Text>
+          <ScrollView
+            contentContainerStyle={styles.scroll}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            <Text style={styles.heading}>Quick scan</Text>
 
-          {/* Image preview / placeholder */}
-          <View style={styles.imageFrame}>
-            {pickedUri ? (
-              <Image source={{ uri: pickedUri }} style={styles.preview} resizeMode="cover" />
-            ) : (
-              <View style={styles.placeholder}>
-                <Ionicons name="camera-outline" size={40} color={colors.textLight} />
-                <Text style={styles.placeholderText}>Pick a photo to analyse</Text>
-              </View>
-            )}
-          </View>
-
-          {/* Library / Camera buttons */}
-          <View style={styles.pickRow}>
-            <TouchableOpacity style={styles.pickBtn} onPress={pickFromLibrary} accessibilityLabel="Choose from library">
-              <Ionicons name="images-outline" size={18} color={colors.text} />
-              <Text style={styles.pickBtnText}>Library</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.pickBtn} onPress={takePhoto} accessibilityLabel="Take a photo">
-              <Ionicons name="camera-outline" size={18} color={colors.text} />
-              <Text style={styles.pickBtnText}>Camera</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Analyse button */}
-          {pickedUri && !isAnalyzing && !lastAnalyzed && (
-            <TouchableOpacity style={styles.analyseBtn} onPress={handleAnalyze} accessibilityRole="button">
-              <Text style={styles.analyseBtnText}>Analyse</Text>
-            </TouchableOpacity>
-          )}
-
-          {isAnalyzing && (
-            <View style={styles.analyzingRow}>
-              <ActivityIndicator color={colors.accent} />
-              <Text style={styles.analyzingText}>Checking what's on your plate…</Text>
+            {/* Image preview / placeholder */}
+            <View style={styles.imageFrame}>
+              {pickedUri ? (
+                <Image source={{ uri: pickedUri }} style={styles.preview} resizeMode="cover" />
+              ) : (
+                <View style={styles.placeholder}>
+                  <Ionicons name="camera-outline" size={40} color={colors.textLight} />
+                  <Text style={styles.placeholderText}>Pick a photo to analyse</Text>
+                </View>
+              )}
             </View>
-          )}
 
-          {/* Analysis result */}
-          {lastAnalyzed && !isAnalyzing && previewSummary && (
-            <View style={styles.resultSection}>
-              <Text style={styles.resultName}>{lastAnalyzed.analysis.food_name}</Text>
-              <NutritionSummary summary={previewSummary} compact />
-
-              {/* Meal type selector */}
-              <Text style={styles.mealTypeLabel}>Save as…</Text>
-              <View style={styles.typeGrid}>
-                {MEAL_TYPES.map((t) => (
-                  <TouchableOpacity
-                    key={t}
-                    style={[styles.typeChip, mealType === t && styles.typeChipActive]}
-                    onPress={() => setMealType(t)}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected: mealType === t }}
-                  >
-                    <Text style={[styles.typeChipText, mealType === t && styles.typeChipTextActive]}>
-                      {t}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-
-              <TouchableOpacity
-                style={[styles.saveBtn, (!mealType || saving) && styles.saveBtnDisabled]}
-                onPress={handleSave}
-                disabled={!mealType || saving}
-                accessibilityRole="button"
-              >
-                {saving
-                  ? <ActivityIndicator color={colors.text} />
-                  : <Text style={styles.saveBtnText}>Add to diary</Text>
-                }
+            {/* Library / Camera buttons */}
+            <View style={styles.pickRow}>
+              <TouchableOpacity style={styles.pickBtn} onPress={pickFromLibrary} accessibilityLabel="Choose from library">
+                <Ionicons name="images-outline" size={18} color={colors.text} />
+                <Text style={styles.pickBtnText}>Library</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.pickBtn} onPress={takePhoto} accessibilityLabel="Take a photo">
+                <Ionicons name="camera-outline" size={18} color={colors.text} />
+                <Text style={styles.pickBtnText}>Camera</Text>
               </TouchableOpacity>
             </View>
-          )}
-        </ScrollView>
+
+            {/* Analyse button */}
+            {pickedUri && !isAnalyzing && !lastAnalyzed && (
+              <TouchableOpacity style={styles.analyseBtn} onPress={handleAnalyze} accessibilityRole="button">
+                <Text style={styles.analyseBtnText}>Analyse</Text>
+              </TouchableOpacity>
+            )}
+
+            {isAnalyzing && (
+              <View style={styles.analyzingRow}>
+                <ActivityIndicator color={colors.accent} />
+                <Text style={styles.analyzingText}>Checking what's on your plate…</Text>
+              </View>
+            )}
+
+            {/* Analysis result */}
+            {lastAnalyzed && !isAnalyzing && currentAnalysis && previewSummary && (
+              <View style={styles.resultSection}>
+                <Text style={styles.resultName}>{currentAnalysis.food_name}</Text>
+                <NutritionSummary summary={previewSummary} compact />
+
+                {/* AI correction chat */}
+                <CorrectionChat
+                  analysis={currentAnalysis}
+                  inferenceLogId={lastAnalyzed.inference_log_id}
+                  onAnalysisUpdated={setCurrentAnalysis}
+                />
+
+                {/* Meal type selector */}
+                <Text style={styles.mealTypeLabel}>Save as…</Text>
+                <View style={styles.typeGrid}>
+                  {MEAL_TYPES.map((t) => (
+                    <TouchableOpacity
+                      key={t}
+                      style={[styles.typeChip, mealType === t && styles.typeChipActive]}
+                      onPress={() => setMealType(t)}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: mealType === t }}
+                    >
+                      <Text style={[styles.typeChipText, mealType === t && styles.typeChipTextActive]}>
+                        {t}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                <TouchableOpacity
+                  style={[styles.saveBtn, (!mealType || saving) && styles.saveBtnDisabled]}
+                  onPress={handleSave}
+                  disabled={!mealType || saving}
+                  accessibilityRole="button"
+                >
+                  {saving
+                    ? <ActivityIndicator color={colors.text} />
+                    : <Text style={styles.saveBtnText}>Add to diary</Text>
+                  }
+                </TouchableOpacity>
+              </View>
+            )}
+          </ScrollView>
+        </KeyboardAvoidingView>
       </SafeAreaView>
     </PaperBackground>
   );
 }
+
+// ─── Styles ───────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
   safe:   { flex: 1 },
@@ -274,10 +388,10 @@ const styles = StyleSheet.create({
     color:      colors.text,
   },
   analyzingRow: {
-    flexDirection: "row",
-    alignItems:    "center",
+    flexDirection:  "row",
+    alignItems:     "center",
     justifyContent: "center",
-    gap:           spacing.md,
+    gap:            spacing.md,
     paddingVertical: spacing.md,
   },
   analyzingText: {
@@ -338,4 +452,79 @@ const styles = StyleSheet.create({
     fontSize:   20,
     color:      colors.text,
   },
+
+  // ── Correction chat ──
+  chatSection: {
+    backgroundColor: colors.bgSecondary,
+    borderRadius:    radius.md,
+    borderWidth:     1.5,
+    borderColor:     colors.border,
+    padding:         spacing.md,
+    gap:             spacing.sm,
+  },
+  chatLabel: {
+    fontFamily:    fonts.body600,
+    fontSize:      12,
+    color:         colors.textMuted,
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+  },
+  messageList: {
+    gap: spacing.xs,
+  },
+  bubble: {
+    borderRadius:      radius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical:   spacing.sm,
+    alignSelf:         "flex-start",
+    maxWidth:          "90%",
+  },
+  bubbleUser: {
+    backgroundColor: colors.pastelBlue,
+    borderWidth:     1.5,
+    borderColor:     colors.pastelBlueBorder,
+    alignSelf:       "flex-end",
+  },
+  bubbleModel: {
+    backgroundColor: colors.bg,
+    borderWidth:     1.5,
+    borderColor:     colors.border,
+  },
+  bubbleText: {
+    fontFamily: fonts.body600,
+    fontSize:   14,
+    color:      colors.text,
+  },
+  bubbleTextModel: {
+    fontFamily: fonts.body400,
+    color:      colors.textMuted,
+  },
+  chatInputRow: {
+    flexDirection: "row",
+    alignItems:    "center",
+    gap:           spacing.sm,
+  },
+  chatInput: {
+    flex:              1,
+    fontFamily:        fonts.body400,
+    fontSize:          14,
+    color:             colors.text,
+    backgroundColor:   colors.bg,
+    borderRadius:      radius.md,
+    borderWidth:       1.5,
+    borderColor:       colors.border,
+    paddingHorizontal: spacing.md,
+    paddingVertical:   10,
+  },
+  sendBtn: {
+    width:           38,
+    height:          38,
+    borderRadius:    19,
+    backgroundColor: colors.accent,
+    borderWidth:     1.5,
+    borderColor:     colors.accentBorder,
+    alignItems:      "center",
+    justifyContent:  "center",
+  },
+  sendBtnDisabled: { opacity: 0.4 },
 });
