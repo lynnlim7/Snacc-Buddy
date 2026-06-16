@@ -3,5 +3,11 @@
     "allow": [
       "mcp__filesystem__read_text_file"
     ]
-  }
+  },
+  "enabledMcpjsonServers": [
+    "sequential-thinking",
+    "chrome-devtools",
+    "filesystem",
+    "context7"
+  ]
 }
