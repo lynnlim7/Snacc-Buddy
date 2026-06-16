@@ -126,6 +126,61 @@ class FoodRepository:
             current -= timedelta(days=1)
         return streak
 
+    async def get_by_user_for_date(
+        self, user_id: str, target_date: date
+    ) -> list[FoodLogResponse]:
+        q = (
+            select(FoodLog)
+            .where(
+                FoodLog.user_id == user_id,
+                func.date(FoodLog.created_at) == target_date,
+            )
+            .order_by(FoodLog.created_at.asc())
+        )
+        rows = (await self.db.execute(q)).scalars().all()
+        return [FoodLogResponse.model_validate(r) for r in rows]
+
+    async def get_weekly_summary(self, user_id: str, start_date: date) -> list[dict]:
+        end_date = start_date + timedelta(days=6)
+        q = select(
+            func.date(FoodLog.created_at).label("log_date"),
+            func.coalesce(func.sum(FoodLog.estimated_total_calories), 0).label("total_calories"),
+            func.coalesce(func.sum(FoodLog.protein_g), 0.0).label("total_protein"),
+            func.coalesce(func.sum(FoodLog.carbs_g), 0.0).label("total_carbs"),
+            func.coalesce(func.sum(FoodLog.fat_g), 0.0).label("total_fat"),
+            func.count(FoodLog.id).label("meal_count"),
+        ).where(
+            FoodLog.user_id == user_id,
+            func.date(FoodLog.created_at) >= start_date,
+            func.date(FoodLog.created_at) <= end_date,
+        ).group_by(func.date(FoodLog.created_at))
+        result = await self.db.execute(q)
+        rows_by_date: dict[date, dict] = {}
+        for row in result.all():
+            d = row.log_date
+            if isinstance(d, str):
+                d = date.fromisoformat(d)
+            rows_by_date[d] = {
+                "date": d.isoformat(),
+                "total_calories": row.total_calories,
+                "total_protein_g": row.total_protein,
+                "total_carbs_g": row.total_carbs,
+                "total_fat_g": row.total_fat,
+                "meal_count": row.meal_count,
+            }
+        days = [start_date + timedelta(days=i) for i in range(7)]
+        return [
+            rows_by_date.get(d, {
+                "date": d.isoformat(),
+                "total_calories": 0,
+                "total_protein_g": 0.0,
+                "total_carbs_g": 0.0,
+                "total_fat_g": 0.0,
+                "meal_count": 0,
+            })
+            for d in days
+        ]
+
     async def get_daily_summary(self, user_id: str, target_date: date) -> dict:
         q = select(
             func.coalesce(func.sum(FoodLog.estimated_total_calories), 0).label(

@@ -17,13 +17,11 @@ class AnalyticsService:
         return DailySummaryResponse(**summary)
 
     async def get_weekly_summary(self, user_id: str) -> WeeklySummaryResponse:
-        today = date.today()
-        days = [today - timedelta(days=i) for i in range(6, -1, -1)]
-        summaries = [
-            await self.get_daily_summary(user_id=user_id, target_date=target_date)
-            for target_date in days
-        ]
-        return WeeklySummaryResponse(week=summaries)
+        start_date = date.today() - timedelta(days=6)
+        rows = await self.repo.get_weekly_summary(user_id, start_date)
+        return WeeklySummaryResponse(
+            week=[DailySummaryResponse(**row) for row in rows]
+        )
 
     async def get_streak(self, user_id: str) -> int:
         return await self.repo.get_streak(user_id)

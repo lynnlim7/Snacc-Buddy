@@ -1,4 +1,5 @@
 import logging
+from datetime import date as date_type
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -32,10 +33,11 @@ async def confirm_food_log(
 async def list_food_logs(
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
+    date: date_type | None = Query(None, description="Filter by date (YYYY-MM-DD)"),
     user: User = Depends(current_active_user),
     service: FoodService = Depends(get_food_service),
 ) -> FoodLogList:
-    items, total = await service.get_logs(str(user.id), limit, offset)
+    items, total = await service.get_logs(str(user.id), limit, offset, date)
     return FoodLogList(items=items, total=total)
 
 

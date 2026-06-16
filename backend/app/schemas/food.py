@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -108,7 +109,7 @@ class FoodLogResponse(BaseModel):
 
 
 class ChatMessage(BaseModel):
-    role: str
+    role: Literal["user", "model"]
     content: str
 
 

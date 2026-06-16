@@ -1,9 +1,17 @@
-from pydantic import EmailStr
+from pydantic import EmailStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+_DEFAULT_SECRETS = frozenset({
+    "change-me-jwt-secret",
+    "change-me-reset-password-secret",
+    "change-me-verification-secret",
+})
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
+    ENV: str = "development"
 
     DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/snacc_buddy"
     GEMINI_API_KEY: str = ""
@@ -35,6 +43,17 @@ class Settings(BaseSettings):
     MAIL_FROM_NAME: str = "Snacc Buddy"
     MAIL_STARTTLS: bool = True
     MAIL_SSL_TLS: bool = False
+
+    @model_validator(mode="after")
+    def _check_secrets(self) -> "Settings":
+        if self.ENV not in ("development", "test"):
+            if self.JWT_SECRET in _DEFAULT_SECRETS:
+                raise ValueError("JWT_SECRET must not be the default value in non-development environments.")
+            if self.RESET_PASSWORD_TOKEN_SECRET in _DEFAULT_SECRETS:
+                raise ValueError("RESET_PASSWORD_TOKEN_SECRET must not be the default value in non-development environments.")
+            if self.VERIFICATION_TOKEN_SECRET in _DEFAULT_SECRETS:
+                raise ValueError("VERIFICATION_TOKEN_SECRET must not be the default value in non-development environments.")
+        return self
 
 
 settings = Settings()

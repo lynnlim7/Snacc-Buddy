@@ -77,9 +77,9 @@ export const foodApi = {
     return data;
   },
 
-  getLogs: async (limit = 20, offset = 0): Promise<FoodLogList> => {
+  getLogs: async (limit = 20, offset = 0, date?: string): Promise<FoodLogList> => {
     const { data } = await client.get<FoodLogList>("/api/v1/food/logs", {
-      params: { limit, offset },
+      params: { limit, offset, ...(date && { date }) },
     });
     return data;
   },

@@ -162,16 +162,13 @@ export const useDiaryStore = create<DiaryState>((set, get) => ({
     })),
 
   loadLogsFromBackend: async (date) => {
-    const { items } = await foodApi.getLogs(100, 0);
-    const forDate = items.filter((log) => log.created_at.startsWith(date));
-    set((state) => {
-      return {
-        mealsByDate: {
-          ...state.mealsByDate,
-          [date]: forDate.map((log) => foodLogToMealEntry(log)),
-        },
-      };
-    });
+    const { items } = await foodApi.getLogs(100, 0, date);
+    set((state) => ({
+      mealsByDate: {
+        ...state.mealsByDate,
+        [date]: items.map((log) => foodLogToMealEntry(log)),
+      },
+    }));
   },
 }));
 

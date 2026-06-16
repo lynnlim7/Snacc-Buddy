@@ -1,5 +1,6 @@
 import hashlib
 import logging
+from datetime import date
 from uuid import UUID
 
 from app.prompt.gemini import gemini_service
@@ -99,20 +100,22 @@ class FoodService:
         self,
         user_id: str,
         payload: FoodLogConfirm,
-        inference_log_id: UUID | None = None,
     ) -> FoodLogResponse:
         log_data = FoodLogCreate(
             user_id=user_id,
             meal_type=payload.meal_type,
             image_urls=payload.image_urls,
             analysis=payload.analysis,
-            inference_log_id=inference_log_id,
+            inference_log_id=payload.inference_log_id,
         )
         return await self.repo.create(log_data)
 
     async def get_logs(
-        self, user_id: str, limit: int, offset: int
+        self, user_id: str, limit: int, offset: int, target_date: "date | None" = None
     ) -> tuple[list[FoodLogResponse], int]:
+        if target_date is not None:
+            items = await self.repo.get_by_user_for_date(user_id, target_date)
+            return items, len(items)
         return await self.repo.get_by_user(user_id, limit, offset)
 
     async def get_log(self, log_id: str, user_id: str) -> FoodLogResponse | None:
