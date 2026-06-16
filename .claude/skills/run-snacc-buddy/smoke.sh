@@ -89,6 +89,30 @@ DAILY=$(curl -sf -H "Authorization: Bearer $TOKEN" "$API/api/v1/analytics/daily?
 echo "$DAILY" | python3 -c "import sys,json; d=json.load(sys.stdin); assert 'total_calories' in d" \
   && echo "  ✓ GET /api/v1/analytics/daily"
 
+# GET /api/v1/analytics/weekly
+WEEKLY=$(curl -sf -H "Authorization: Bearer $TOKEN" "$API/api/v1/analytics/weekly")
+echo "$WEEKLY" | python3 -c "import sys,json; d=json.load(sys.stdin); assert 'week' in d and len(d['week'])==7" \
+  && echo "  ✓ GET /api/v1/analytics/weekly"
+
+# GET /api/v1/analytics/streak
+STREAK=$(curl -sf -H "Authorization: Bearer $TOKEN" "$API/api/v1/analytics/streak")
+echo "$STREAK" | python3 -c "import sys,json; d=json.load(sys.stdin); assert 'streak' in d" \
+  && echo "  ✓ GET /api/v1/analytics/streak"
+
+# PATCH /api/v1/food/logs/{id} (update notes)
+LOG_ID=$(echo "$LOG" | python3 -c "import sys,json; print(json.load(sys.stdin)['id'])")
+PATCHED=$(curl -sf -X PATCH "$API/api/v1/food/logs/$LOG_ID" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"notes":"smoke test note","mood":["happy"]}')
+echo "$PATCHED" | python3 -c "import sys,json; d=json.load(sys.stdin); assert d.get('notes')=='smoke test note'" \
+  && echo "  ✓ PATCH /api/v1/food/logs/{id}"
+
+# DELETE /api/v1/food/logs/{id}
+STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X DELETE \
+  -H "Authorization: Bearer $TOKEN" "$API/api/v1/food/logs/$LOG_ID")
+[ "$STATUS" = "204" ] && echo "  ✓ DELETE /api/v1/food/logs/{id}" || { echo "  ✗ DELETE failed: $STATUS"; kill $API_PID; exit 1; }
+
 echo ""
 echo "Backend smoke: PASS"
 
@@ -113,7 +137,7 @@ if [ "$1" = "--web" ]; then
   echo "  API PID:  $API_PID (kill to stop)"
   echo "  Expo PID: $EXPO_PID (kill to stop)"
 else
-  kill $API_PID 2>/dev/null
+  kill $API_PID 2>/dev/null || true
   echo ""
   echo "API stopped. Run with --web to also start the Expo frontend."
 fi

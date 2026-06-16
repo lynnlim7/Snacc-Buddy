@@ -40,6 +40,10 @@ Output on success:
   ✓ GET /api/v1/food/logs
   ✓ POST /api/v1/food/logs (confirm)
   ✓ GET /api/v1/analytics/daily
+  ✓ GET /api/v1/analytics/weekly
+  ✓ GET /api/v1/analytics/streak
+  ✓ PATCH /api/v1/food/logs/{id}
+  ✓ DELETE /api/v1/food/logs/{id}
 Backend smoke: PASS
 ```
 
@@ -107,14 +111,19 @@ DATABASE_URL="postgresql+asyncpg://snacc_buddy_admin:nomz123@localhost:5434/snac
 .venv/bin/alembic upgrade 2f8a45c69b31    # food_logs table
 ```
 
-The AI governance migration (`a1b2c3d4e5f6`) cannot be applied via alembic due to two bugs — see Gotchas. Apply it manually:
+The AI governance migration (`a1b2c3d4e5f6`) cannot be applied via alembic due to two bugs — see Gotchas. Apply the mood column directly and stamp all three versions:
 
 ```bash
+# Add mood column (if missing — applies after governance tables already exist)
 docker exec snacc-buddy-db-1 psql -U snacc_buddy_admin -d snacc_buddy \
-  -f .claude/skills/run-snacc-buddy/governance_schema.sql
-```
+  -c "ALTER TABLE food_logs ADD COLUMN IF NOT EXISTS mood JSONB NOT NULL DEFAULT '[]'::jsonb;"
 
-(That file doesn't exist yet — see Gotchas for what it would contain.)
+# Stamp alembic so it knows all three heads are applied
+docker exec snacc-buddy-db-1 psql -U snacc_buddy_admin -d snacc_buddy \
+  -c "INSERT INTO alembic_version (version_num) VALUES ('a1b2c3d4e5f6') ON CONFLICT DO NOTHING;
+      INSERT INTO alembic_version (version_num) VALUES ('2f8a45c69b31') ON CONFLICT DO NOTHING;
+      INSERT INTO alembic_version (version_num) VALUES ('99447c563d39') ON CONFLICT DO NOTHING;"
+```
 
 ## Run (human path)
 
@@ -124,6 +133,12 @@ docker exec snacc-buddy-db-1 psql -U snacc_buddy_admin -d snacc_buddy \
 4. Open `http://localhost:8081`
 
 ## Gotchas
+
+**`mood` column missing on existing DBs where `99447c563d39` never applied.** The `99447c563d39` migration has two heads (`2f8a45c69b31` + `a1b2c3d4e5f6`). If alembic_version only has `2f8a45c69b31`, running `alembic upgrade 99447c563d39` tries to apply the broken governance migration first and errors. Fix: use the psql commands in the Database migrations section above — add the column directly and stamp all three version rows into alembic_version.
+
+**`alembic stamp <rev>` replaces the current version, not adds to it.** Stamping `a1b2c3d4e5f6` deletes `2f8a45c69b31` from alembic_version. For multi-head migrations, insert rows directly via psql rather than using `alembic stamp`.
+
+**`uv run` re-creates the venv when called from outside `backend/`.** `uv run` invoked from the repo root finds no `pyproject.toml` and recreates `.venv` from scratch on every call. Always `cd backend` first before running any `uv` command.
 
 **`uv sync` silently installs nothing on a fresh venv.** After deleting `.venv` and recreating with `uv venv`, `uv sync` says "Audited 94 packages" and skips installation. The venv ends up with only 3 items in site-packages. Fix: `uv sync --reinstall`.
 
@@ -147,6 +162,8 @@ docker exec snacc-buddy-db-1 psql -U snacc_buddy_admin -d snacc_buddy \
 | `ImportError: cannot import name 'current_active_user'` | `auth.py` is missing the line — see Gotchas |
 | `UndefinedTableError: relation "users"` | Migration created `user` not `users` — run `ALTER TABLE "user" RENAME TO users` |
 | `UndefinedColumnError: column food_logs.inference_log_id` | Governance migration didn't apply — run `ALTER TABLE food_logs ADD COLUMN IF NOT EXISTS inference_log_id UUID` |
+| `UndefinedColumnError: column food_logs.mood` | `99447c563d39` migration hasn't run — use the psql commands in Database migrations section |
+| `DuplicateTableError: relation "food_logs" already exists` on `alembic upgrade` | Multi-head migration ordering issue — stamp all three versions directly via psql (see Database migrations section) |
 | `SMTPAuthenticationError` on register | Set `MAIL_SUPPRESS_SEND=1` env var |
 | Backend starts but `uv sync` shows empty site-packages | Delete `.venv`, then `uv sync --reinstall` |
 | `The version of cryptography does not match` | Delete `.venv`, then `uv sync --reinstall` |
