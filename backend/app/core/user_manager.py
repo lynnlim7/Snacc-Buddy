@@ -24,8 +24,11 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
         self.notification_service = notification_service
 
     async def on_after_register(self, user: User, request: Optional[Request] = None):
-        await self.notification_service.send_signup_confirmation_email(user.email)
         logger.info("user_registered", user_id=str(user.id), email=user.email)
+        try:
+            await self.notification_service.send_signup_confirmation_email(user.email)
+        except Exception as exc:
+            logger.warning("signup_email_failed", user_id=str(user.id), error=str(exc))
 
     async def on_after_forgot_password(self, user: User, token: str, request: Optional[Request] = None):
         reset_link = f"{settings.FRONTEND_RESET_PASSWORD_URL}?token={token}"

@@ -33,7 +33,7 @@ class PromptVersion(Base):
     content_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[PromptStatus] = mapped_column(
-        Enum(PromptStatus, name="prompt_status_enum", create_type=False),
+        Enum(PromptStatus, name="prompt_status_enum", create_type=False, values_callable=lambda x: [e.value for e in x]),
         nullable=False,
         default=PromptStatus.DRAFT,
     )

@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { AnalyzeResponse, DailySummary, FoodLogResponse, WeeklySummary } from "../types/food";
+import { DailySummary, FoodLogResponse, WeeklySummary } from "../types/food";
 import { foodApi } from "../services/api";
 
 const DEFAULT_USER_ID = "guest";
@@ -11,9 +11,6 @@ interface FoodState {
   logsOffset: number;
   isLoadingLogs: boolean;
 
-  isAnalyzing: boolean;
-  lastAnalyzed: AnalyzeResponse | null;
-
   dailySummary: DailySummary | null;
   weeklySummary: WeeklySummary | null;
   isLoadingAnalytics: boolean;
@@ -23,8 +20,6 @@ interface FoodState {
 
 interface FoodActions {
   setUserId: (id: string) => void;
-  analyzeImage: (imageUri: string) => Promise<AnalyzeResponse | null>;
-  clearAnalysis: () => void;
   fetchLogs: (reset?: boolean) => Promise<void>;
   fetchMoreLogs: () => Promise<void>;
   fetchDailySummary: (date?: string) => Promise<void>;
@@ -39,9 +34,6 @@ export const useFoodStore = create<FoodState & FoodActions>((set, get) => ({
   logsOffset: 0,
   isLoadingLogs: false,
 
-  isAnalyzing: false,
-  lastAnalyzed: null,
-
   dailySummary: null,
   weeklySummary: null,
   isLoadingAnalytics: false,
@@ -49,21 +41,6 @@ export const useFoodStore = create<FoodState & FoodActions>((set, get) => ({
   error: null,
 
   setUserId: (id) => set({ userId: id }),
-
-  clearAnalysis: () => set({ lastAnalyzed: null, isAnalyzing: false }),
-
-  analyzeImage: async (imageUri) => {
-    set({ isAnalyzing: true, error: null });
-    try {
-      const response = await foodApi.analyzeImage(imageUri);
-      set({ isAnalyzing: false, lastAnalyzed: response });
-      return response;
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Analysis failed";
-      set({ isAnalyzing: false, error: message });
-      return null;
-    }
-  },
 
   fetchLogs: async (reset = true) => {
     set({ isLoadingLogs: true, error: null });

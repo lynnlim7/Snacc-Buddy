@@ -51,13 +51,13 @@ class AIInferenceLog(Base):
     # {"input_tokens": N, "output_tokens": N, "total_tokens": N}
     token_usage: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     status: Mapped[InferenceStatus] = mapped_column(
-        Enum(InferenceStatus, name="inference_status_enum", create_type=False),
+        Enum(InferenceStatus, name="inference_status_enum", create_type=False, values_callable=lambda x: [e.value for e in x]),
         nullable=False,
         default=InferenceStatus.SUCCESS,
     )
     # Denormalised from RiskAssessment for fast dashboard queries (avoids join)
     risk_level: Mapped[RiskTier | None] = mapped_column(
-        Enum(RiskTier, name="risk_tier_enum", create_type=False),
+        Enum(RiskTier, name="risk_tier_enum", create_type=False, values_callable=lambda x: [e.value for e in x]),
         nullable=True,
     )
     created_at: Mapped[datetime] = mapped_column(

@@ -28,7 +28,7 @@ class RiskAssessment(Base):
     )
     risk_score: Mapped[int] = mapped_column(Integer, nullable=False)  # 0–100
     risk_level: Mapped[RiskTier] = mapped_column(
-        Enum(RiskTier, name="risk_tier_enum", create_type=False),
+        Enum(RiskTier, name="risk_tier_enum", create_type=False, values_callable=lambda x: [e.value for e in x]),
         nullable=False,
         index=True,
     )

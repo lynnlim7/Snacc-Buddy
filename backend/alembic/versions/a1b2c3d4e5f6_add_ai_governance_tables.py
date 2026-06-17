@@ -40,59 +40,29 @@ from alembic import op
 from sqlalchemy.dialects import postgresql
 
 revision: str = "a1b2c3d4e5f6"
-down_revision: str | None = "bc07eafa8785"
+down_revision: str | None = "2f8a45c69b31"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    # ── 1. PostgreSQL ENUM types ──────────────────────────────────────────────
-    # Create enums explicitly so they are shared across tables and
-    # can be reused by future modules without schema changes.
-
-    # PostgreSQL has no CREATE TYPE IF NOT EXISTS. Use PL/pgSQL DO blocks instead.
-    # This is safe to re-run: catches duplicate_object and continues.
-    op.execute(sa.text("""
-        DO $$ BEGIN
-            CREATE TYPE model_provider_enum AS ENUM ('google', 'openai', 'anthropic', 'internal');
-        EXCEPTION WHEN duplicate_object THEN null; END $$
-    """))
-    op.execute(sa.text("""
-        DO $$ BEGIN
-            CREATE TYPE model_status_enum AS ENUM ('active', 'deprecated', 'retired');
-        EXCEPTION WHEN duplicate_object THEN null; END $$
-    """))
-    op.execute(sa.text("""
-        DO $$ BEGIN
-            CREATE TYPE risk_tier_enum AS ENUM ('low', 'medium', 'high');
-        EXCEPTION WHEN duplicate_object THEN null; END $$
-    """))
-    op.execute(sa.text("""
-        DO $$ BEGIN
-            CREATE TYPE prompt_status_enum AS ENUM ('draft', 'active', 'retired');
-        EXCEPTION WHEN duplicate_object THEN null; END $$
-    """))
-    op.execute(sa.text("""
-        DO $$ BEGIN
-            CREATE TYPE inference_status_enum AS ENUM ('success', 'failed', 'cache_hit', 'timeout', 'parse_error');
-        EXCEPTION WHEN duplicate_object THEN null; END $$
-    """))
-
-    # ── 2. ai_models ─────────────────────────────────────────────────────────
+    # ── 1. ai_models ─────────────────────────────────────────────────────────
+    # ENUM types are created implicitly by op.create_table on first use.
+    # Subsequent tables that share an ENUM use create_type=False to skip re-creation.
     op.create_table(
         "ai_models",
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
         sa.Column("name", sa.String(255), nullable=False),
         sa.Column(
             "provider",
-            sa.Enum("google", "openai", "anthropic", "internal", name="model_provider_enum", create_type=False),
+            sa.Enum("google", "openai", "anthropic", "internal", name="model_provider_enum"),
             nullable=False,
         ),
         sa.Column("model_identifier", sa.String(255), nullable=False),
         sa.Column("version", sa.String(100), nullable=False),
         sa.Column(
             "status",
-            sa.Enum("active", "deprecated", "retired", name="model_status_enum", create_type=False),
+            sa.Enum("active", "deprecated", "retired", name="model_status_enum"),
             nullable=False,
             server_default="active",
         ),
@@ -106,7 +76,7 @@ def upgrade() -> None:
         ),
         sa.Column(
             "risk_tier",
-            sa.Enum("low", "medium", "high", name="risk_tier_enum", create_type=False),
+            sa.Enum("low", "medium", "high", name="risk_tier_enum"),
             nullable=False,
             server_default="medium",
         ),
@@ -154,7 +124,7 @@ def upgrade() -> None:
         sa.Column("description", sa.Text(), nullable=True),
         sa.Column(
             "status",
-            sa.Enum("draft", "active", "retired", name="prompt_status_enum", create_type=False),
+            sa.Enum("draft", "active", "retired", name="prompt_status_enum"),
             nullable=False,
             server_default="draft",
         ),
@@ -227,7 +197,6 @@ def upgrade() -> None:
             sa.Enum(
                 "success", "failed", "cache_hit", "timeout", "parse_error",
                 name="inference_status_enum",
-                create_type=False,
             ),
             nullable=False,
             server_default="success",

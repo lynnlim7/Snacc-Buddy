@@ -48,8 +48,8 @@ services:
     ports:
       - "8081:8081"
     environment:
-      REACT_NATIVE_PACKAGER_HOSTNAME: "192.168.1.12"
-      EXPO_PUBLIC_API_URL: "http://192.168.1.12:8000"
+      REACT_NATIVE_PACKAGER_HOSTNAME: "localhost"
+      EXPO_PUBLIC_API_URL: "http://localhost:8000"
       EXPO_PUBLIC_PLATFORM_MODE: "web"
     depends_on:
       - api

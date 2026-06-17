@@ -22,13 +22,13 @@ class AIModel(Base):
     )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     provider: Mapped[ModelProvider] = mapped_column(
-        Enum(ModelProvider, name="model_provider_enum", create_type=False),
+        Enum(ModelProvider, name="model_provider_enum", create_type=False, values_callable=lambda x: [e.value for e in x]),
         nullable=False,
     )
     model_identifier: Mapped[str] = mapped_column(String(255), nullable=False)
     version: Mapped[str] = mapped_column(String(100), nullable=False)
     status: Mapped[ModelStatus] = mapped_column(
-        Enum(ModelStatus, name="model_status_enum", create_type=False),
+        Enum(ModelStatus, name="model_status_enum", create_type=False, values_callable=lambda x: [e.value for e in x]),
         nullable=False,
         default=ModelStatus.ACTIVE,
     )
@@ -37,7 +37,7 @@ class AIModel(Base):
     # ["vision", "nutrition_analysis", "ocr"]
     capabilities: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
     risk_tier: Mapped[RiskTier] = mapped_column(
-        Enum(RiskTier, name="risk_tier_enum", create_type=False),
+        Enum(RiskTier, name="risk_tier_enum", create_type=False, values_callable=lambda x: [e.value for e in x]),
         nullable=False,
         default=RiskTier.MEDIUM,
     )

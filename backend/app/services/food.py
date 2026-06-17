@@ -81,16 +81,22 @@ class FoodService:
             return analysis, log_id
 
         except AITimeoutError as e:
+            logger.warning("food_service.analyze timeout log_id=%s", log_id)
             await audit_service.record_failure(
                 log_id, start, InferenceStatus.TIMEOUT, {"error": str(e)}
             )
             raise
         except AIParseError as e:
+            logger.warning("food_service.analyze parse_error log_id=%s error=%s", log_id, e)
             await audit_service.record_failure(
                 log_id, start, InferenceStatus.PARSE_ERROR, {"error": str(e)}
             )
             raise
         except AIException as e:
+            logger.error(
+                "food_service.analyze ai_error log_id=%s type=%s error=%s",
+                log_id, type(e).__name__, e,
+            )
             await audit_service.record_failure(
                 log_id, start, InferenceStatus.FAILED, {"error": str(e)}
             )
