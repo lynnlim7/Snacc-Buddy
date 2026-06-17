@@ -15,6 +15,7 @@ from app.ai_governance.api.deps import get_inference_audit_service
 from app.ai_governance.repositories.model_registry import ModelRegistryRepository
 from app.ai_governance.repositories.prompt_registry import PromptRegistryRepository
 from app.ai_governance.services.inference_audit import InferenceAuditService
+from app.services.storage import r2_storage
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -87,11 +88,28 @@ async def analyze_food_image(
             ),
         )
 
-    analysis, inference_log_id = await service.analyze_image(
-        image_bytes=image_bytes,
-        mime_type=image.content_type or "image/jpeg",
-        audit_service=audit_service,
-        model_id=default_model.id,
-        prompt_version_id=active_prompt.id,
+    mime_type = image.content_type or "image/jpeg"
+
+    # Upload to R2 and run AI analysis concurrently — neither blocks the other.
+    import asyncio as _asyncio
+    image_key, (analysis, inference_log_id) = await _asyncio.gather(
+        r2_storage.upload_image(image_bytes, mime_type),
+        service.analyze_image(
+            image_bytes=image_bytes,
+            mime_type=mime_type,
+            audit_service=audit_service,
+            model_id=default_model.id,
+            prompt_version_id=active_prompt.id,
+        ),
     )
-    return AnalyzeResponse(analysis=analysis, inference_log_id=inference_log_id)
+
+    # Presigned URL is for immediate display only — it expires in 1 hour.
+    # The frontend must pass image_key (not image_url) to confirmLog for durable storage.
+    image_url = r2_storage.get_presigned_url(image_key) if image_key else None
+
+    return AnalyzeResponse(
+        analysis=analysis,
+        inference_log_id=inference_log_id,
+        image_key=image_key,
+        image_url=image_url,
+    )

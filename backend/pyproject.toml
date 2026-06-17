@@ -23,6 +23,7 @@ dependencies = [
     "fastapi-limiter>=0.1.6,<0.2.0",
     "structlog>=26.1.0",
     "cryptography>=47.0.0",
+    "boto3>=1.35.0",
 ]
 
 [dependency-groups]

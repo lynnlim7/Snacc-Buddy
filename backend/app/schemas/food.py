@@ -45,6 +45,8 @@ class GeminiAnalysis(BaseModel):
 class AnalyzeResponse(BaseModel):
     analysis: GeminiAnalysis
     inference_log_id: uuid.UUID
+    image_url: str | None = None   # presigned URL — for immediate display only, expires in 1 h
+    image_key: str | None = None   # R2 object key — send this to confirmLog for DB storage
 
 
 class FoodLogList(BaseModel):

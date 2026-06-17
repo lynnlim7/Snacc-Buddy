@@ -6,6 +6,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.food_log import FoodLog
 from app.schemas.food import FoodLogCreate, FoodLogResponse, FoodLogUpdate
+from app.services.storage import r2_storage
+
+
+def _sign_image_urls(response: FoodLogResponse) -> FoodLogResponse:
+    """Replace stored R2 object keys with fresh presigned URLs."""
+    if not response.image_url:
+        return response
+    signed = [r2_storage.get_presigned_url(key) or key for key in response.image_url]
+    return response.model_copy(update={"image_url": signed})
 
 
 class FoodRepository:
@@ -41,7 +50,7 @@ class FoodRepository:
         self.db.add(log)
         await self.db.commit()
         await self.db.refresh(log)
-        return FoodLogResponse.model_validate(log)
+        return _sign_image_urls(FoodLogResponse.model_validate(log))
 
     async def get_by_user(
         self, user_id: str, limit: int = 20, offset: int = 0
@@ -59,7 +68,7 @@ class FoodRepository:
             .offset(offset)
         )
         rows = (await self.db.execute(q)).scalars().all()
-        return [FoodLogResponse.model_validate(r) for r in rows], total
+        return [_sign_image_urls(FoodLogResponse.model_validate(r)) for r in rows], total
 
     async def get_by_id(self, log_id: str, user_id: str) -> FoodLogResponse | None:
         q = select(FoodLog).where(
@@ -67,7 +76,7 @@ class FoodRepository:
             FoodLog.user_id == user_id,
         )
         row = (await self.db.execute(q)).scalar_one_or_none()
-        return FoodLogResponse.model_validate(row) if row else None
+        return _sign_image_urls(FoodLogResponse.model_validate(row)) if row else None
 
     async def update(
         self, log_id: str, user_id: str, data: FoodLogUpdate
@@ -83,7 +92,7 @@ class FoodRepository:
             setattr(log, field, value)
         await self.db.commit()
         await self.db.refresh(log)
-        return FoodLogResponse.model_validate(log)
+        return _sign_image_urls(FoodLogResponse.model_validate(log))
 
     async def delete(self, log_id: str, user_id: str) -> bool:
         q = select(FoodLog).where(
@@ -138,7 +147,7 @@ class FoodRepository:
             .order_by(FoodLog.created_at.asc())
         )
         rows = (await self.db.execute(q)).scalars().all()
-        return [FoodLogResponse.model_validate(r) for r in rows]
+        return [_sign_image_urls(FoodLogResponse.model_validate(r)) for r in rows]
 
     async def get_weekly_summary(self, user_id: str, start_date: date) -> list[dict]:
         end_date = start_date + timedelta(days=6)

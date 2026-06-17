@@ -43,6 +43,8 @@ export interface GeminiAnalysis {
 export interface AnalyzeResponse {
   analysis: GeminiAnalysis;
   inference_log_id: string;
+  image_url: string | null;  // presigned URL — for display only, expires in 1 hour
+  image_key: string | null;  // R2 object key — pass to confirmLog for durable storage
 }
 
 export interface FoodLogResponse {

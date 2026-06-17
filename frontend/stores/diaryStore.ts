@@ -206,7 +206,7 @@ function foodLogToMealEntry(log: FoodLogResponse): MealEntry {
     type: (log.meal_type.charAt(0).toUpperCase() + log.meal_type.slice(1)) as MealType,
     photos: [{
       id:   log.id,
-      uri:  "",   // no device-local URI for persisted entries; PolaroidStrip shows placeholder
+      uri:  log.image_url?.[0] ?? "",
       name,
       nutrition: {
         calories,

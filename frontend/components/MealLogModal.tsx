@@ -62,12 +62,16 @@ async function analyseImage(uri: string): Promise<{
   name: string;
   nutrition: NutritionInfo;
   inferenceLogId: string;
+  imageUrl: string | null;
+  imageKey: string | null;
   analysis: GeminiAnalysis;
 }> {
   const response = await foodApi.analyzeImage(uri);
   const a = response.analysis;
   return {
     inferenceLogId: response.inference_log_id,
+    imageUrl: response.image_url ?? null,
+    imageKey: response.image_key ?? null,
     analysis: a,
     name: a.food_name,
     nutrition: geminiAnalysisToNutrition(a),
@@ -84,6 +88,8 @@ export function MealLogModal({ visible, onClose, onSave, prefillType }: Props) {
   const [editName, setEditName]     = useState("");
   const [inferenceLogId, setInferenceLogId] = useState<string | null>(null);
   const [currentAnalysis, setCurrentAnalysis] = useState<GeminiAnalysis | null>(null);
+  const [r2ImageUrl, setR2ImageUrl]     = useState<string | null>(null);
+  const [r2ImageKey, setR2ImageKey]     = useState<string | null>(null);
   const [saving, setSaving]             = useState(false);
   const [chatMessages, setChatMessages] = useState<{ role: string; content: string }[]>([]);
   const [chatInput, setChatInput]       = useState("");
@@ -97,6 +103,8 @@ export function MealLogModal({ visible, onClose, onSave, prefillType }: Props) {
     setEditName("");
     setInferenceLogId(null);
     setCurrentAnalysis(null);
+    setR2ImageUrl(null);
+    setR2ImageKey(null);
     setSaving(false);
     setChatMessages([]);
     setChatInput("");
@@ -134,6 +142,8 @@ export function MealLogModal({ visible, onClose, onSave, prefillType }: Props) {
     try {
       const analysis = await analyseImage(uri);
       setInferenceLogId(analysis.inferenceLogId);
+      setR2ImageUrl(analysis.imageUrl);
+      setR2ImageKey(analysis.imageKey);
       setCurrentAnalysis(analysis.analysis);
       setResult({ name: analysis.name, nutrition: analysis.nutrition });
       setEditName(analysis.name);
@@ -148,20 +158,20 @@ export function MealLogModal({ visible, onClose, onSave, prefillType }: Props) {
     if (!mealType || !result || !imageUri || !currentAnalysis) return;
     setSaving(true);
     try {
-      await foodApi.confirmLog({
+      const saved = await foodApi.confirmLog({
         meal_type: mealType.toLowerCase(),
-        image_urls: [],
+        image_urls: r2ImageKey ? [r2ImageKey] : [],
         analysis: { ...currentAnalysis, food_name: editName || currentAnalysis.food_name },
         inference_log_id: inferenceLogId ?? undefined,
       });
       const photo: FoodPhoto = {
-        id: Date.now().toString(),
-        uri: imageUri,
+        id: String(saved.id),
+        uri: r2ImageUrl ?? imageUri,
         name: editName || result.name,
         nutrition: result.nutrition,
       };
       const meal: MealEntry = {
-        id: Date.now().toString(),
+        id: String(saved.id),
         type: mealType,
         photos: [photo],
         totalCalories: result.nutrition.calories,
