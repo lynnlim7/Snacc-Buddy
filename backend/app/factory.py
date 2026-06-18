@@ -19,7 +19,7 @@ from app.core.database import AsyncSessionLocal
 from app.core.exception_handlers import register_exception_handlers
 from app.core.limiter import rate_limit_callback, user_identifier
 from app.core.redis import close_redis, get_redis
-from app.prompt.gemini import _ANALYSIS_PROMPT
+from app.prompt.prompt import PROMPTS
 from app.schemas.user import UserCreate, UserRead, UserUpdate
 
 logger = logging.getLogger(__name__)
@@ -48,12 +48,13 @@ async def _seed_governance() -> None:
         db.add(model)
         await db.flush()
 
-        content_hash = hashlib.sha256(_ANALYSIS_PROMPT.encode()).hexdigest()
+        analysis_prompt = PROMPTS["system_prompt"]
+        content_hash = hashlib.sha256(analysis_prompt.encode()).hexdigest()
         prompt = PromptVersion(
             model_id=model.id,
             version=1,
             name="Food analysis v1",
-            prompt_template=_ANALYSIS_PROMPT,
+            prompt_template=analysis_prompt,
             content_hash=content_hash,
             status=PromptStatus.ACTIVE,
             is_active=True,

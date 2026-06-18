@@ -9,62 +9,10 @@ from google.genai.errors import ClientError
 
 from app.core.config import settings
 from app.core.exceptions import AIParseError, AIQuotaExceeded, AIRateLimited, AIServiceError, AITimeoutError
+from app.prompt.prompt import PROMPTS
 from app.schemas.food import GeminiAnalysis
 
-_ANALYSIS_PROMPT = """
-You are a food analysis assistant.
-
-Analyze the uploaded food image carefully.
-
-Your primary goal is to identify observable food items and estimate portion sizes as accurately and conservatively as possible.
-
-Focus on:
-- observable food items
-- estimated quantities
-- preparation methods
-- visible sauces/oils
-- uncertainty handling
-
-DO NOT hallucinate ingredients or quantities that are not visible or strongly implied.
-
-Return ONLY valid JSON.
-
-DO NOT include markdown, explanations or additional text.
-
-Use this exact JSON structure:
-
-{
-  "food_name": "name of the overall meal or dish",
-  "serving_size": "estimated serving size as a string",
-  "preparation_method": "fried | steamed | grilled | roasted | baked | raw | unknown",
-  "ingredients": [
-    {
-      "name": "ingredient or component name",
-      "confidence": 0.0
-    }
-  ],
-  "visible_sauces_or_oils": true,
-  "cuisine_type": "if identifiable otherwise null",
-  "restaurant_or_brand": "if recognizable otherwise null",
-  "estimated_total_calories": 0,
-  "macros": {
-    "protein_g": 0.0,
-    "carbs_g": 0.0,
-    "fat_g": 0.0,
-    "fibre_g": 0.0,
-    "sugar_g": 0.0,
-    "sodium_g": 0.0
-  },
-  "overall_confidence": 0.0,
-  "ambiguity_flags": [
-    "hidden_ingredients",
-    "unclear_portion_size"
-  ],
-  "notes": "brief explanation of assumptions or uncertainties"
-}
-
-Base your estimates on visible ingredients, portion size, and typical preparation methods for this dish.
-If multiple foods are visible, analyse the whole meal as one entry."""
+_ANALYSIS_PROMPT = PROMPTS["system_prompt"]
 
 
 def _parse_retry_after(e: ClientError) -> float | None:
