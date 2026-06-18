@@ -1,59 +1,85 @@
 import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { Platform } from "react-native";
+import { Platform, View } from "react-native";
 import { colors, fonts } from "../../constants/theme";
 
 type IconName = React.ComponentProps<typeof Ionicons>["name"];
 
 function TabIcon({ name, focused }: { name: IconName; focused: boolean }) {
-  return (
-    <Ionicons
-      name={name}
-      size={22}
-      color={focused ? colors.accent : colors.textMuted}
-    />
-  );
+  if (focused) {
+    return (
+      <View
+        style={{
+          width:           40,
+          height:          40,
+          borderRadius:    20,
+          backgroundColor: colors.primary,
+          alignItems:      "center",
+          justifyContent:  "center",
+        }}
+      >
+        <Ionicons name={name} size={20} color="#FFFFFF" />
+      </View>
+    );
+  }
+  return <Ionicons name={name} size={22} color={colors.textMuted} />;
 }
 
 export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: colors.accent,
+        headerShown:             false,
+        tabBarActiveTintColor:   colors.primary,
         tabBarInactiveTintColor: colors.textMuted,
         tabBarStyle: {
-          backgroundColor: colors.bgSecondary,
-          borderTopWidth: 1.5,
-          borderTopColor: colors.border,
-          height: Platform.OS === "ios" ? 84 : 64,
-          paddingBottom: Platform.OS === "ios" ? 24 : 10,
-          paddingTop: 8,
+          backgroundColor: colors.bgCard,
+          borderTopWidth:  1,
+          borderTopColor:  colors.primaryLight,
+          height:          Platform.OS === "ios" ? 88 : 72,
+          paddingBottom:   Platform.OS === "ios" ? 24 : 12,
+          paddingTop:      8,
+        },
+        tabBarItemStyle: {
+          flexDirection: "column",
+          alignItems:    "center",
+          gap:           4,
         },
         tabBarLabelStyle: {
-          fontFamily: fonts.body600,
-          fontSize: 11,
+          fontFamily: fonts.body500,
+          fontSize:   11,
+          marginTop:  0,
+        },
+        tabBarIconStyle: {
+          marginBottom: 0,
         },
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
-          title: "Diary",
+          title:      "Diary",
           tabBarIcon: ({ focused }) => <TabIcon name="book-outline" focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="analytics"
         options={{
-          title: "Progress",
+          title:      "Progress",
           tabBarIcon: ({ focused }) => <TabIcon name="trending-up-outline" focused={focused} />,
+        }}
+      />
+      <Tabs.Screen
+        name="recipes"
+        options={{
+          title:      "Recipes",
+          tabBarIcon: ({ focused }) => <TabIcon name="restaurant-outline" focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
-          title: "You",
+          title:      "You",
           tabBarIcon: ({ focused }) => <TabIcon name="person-outline" focused={focused} />,
         }}
       />

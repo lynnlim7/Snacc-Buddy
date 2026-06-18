@@ -1,7 +1,13 @@
+/**
+ * You Tab — profile + nutrition settings screen.
+ * Figma design: profile header, weight/BMI card, calorie goal card
+ * with goal-mode buttons, body stats section, save/logout.
+ */
 import { useState, useEffect } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -11,18 +17,20 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 import { PaperBackground } from "../../components/PaperBackground";
 import { useUserStore } from "../../stores/userStore";
 import { useAuthStore } from "../../stores/authStore";
 import { authApi } from "../../services/api";
+import { computeBMI, computeNutritionTargets } from "../../utils/nutrition";
 import { colors, fonts, spacing, radius } from "../../constants/theme";
 
 // ─── Option maps ──────────────────────────────────────────────
 
 const GENDERS = [
-  { value: "male",            label: "Male" },
-  { value: "female",          label: "Female" },
-  { value: "non-binary",      label: "Non-binary" },
+  { value: "male",              label: "Male" },
+  { value: "female",            label: "Female" },
+  { value: "non-binary",        label: "Non-binary" },
   { value: "prefer_not_to_say", label: "Prefer not to say" },
 ];
 const GOALS = [
@@ -39,6 +47,21 @@ const LIFESTYLES = [
   { value: "student",   label: "Student" },
   { value: "homemaker", label: "Homemaker" },
 ];
+
+// Goal mode buttons shown on the calorie goal card
+const GOAL_MODES = [
+  { value: "lose_weight",  label: "Lose weight",   icon: "trending-down-outline" },
+  { value: "maintain",     label: "Maintain",       icon: "remove-outline" },
+  { value: "gain_muscle",  label: "Gain muscle",    icon: "trending-up-outline" },
+];
+
+// BMI category → colour mapping
+function bmiColor(category: string): string {
+  if (category.toLowerCase().includes("underweight")) return "#A8C5DA";
+  if (category.toLowerCase().includes("normal"))      return "#C8D5B9";
+  if (category.toLowerCase().includes("overweight"))  return "#E8B98A";
+  return "#D97B78"; // obese
+}
 
 // ─── Sub-components ───────────────────────────────────────────
 
@@ -100,7 +123,7 @@ export default function ProfileScreen() {
   const [saving,     setSaving]     = useState(false);
   const [saved,      setSaved]      = useState(false);
 
-  // Sync form if profile loads after mount (e.g. slow network on first launch)
+  // Sync form if profile loads after mount
   useEffect(() => {
     if (!profile) return;
     setName(profile.name ?? "");
@@ -113,9 +136,22 @@ export default function ProfileScreen() {
     setLifestyle(profile.lifestyle);
   }, [profile?.id]);
 
-  const initial = (
-    (profile?.name?.trim()[0] ?? profile?.email?.[0] ?? "?")
-  ).toUpperCase();
+  const initial  = ((profile?.name?.trim()[0] ?? profile?.email?.[0] ?? "?")).toUpperCase();
+  const targets  = computeNutritionTargets(profile);
+  const bmi      = profile?.current_weight_kg && profile?.height_cm
+    ? computeBMI(profile.current_weight_kg, profile.height_cm)
+    : null;
+
+  // BMI scale bar position (BMI 15–40 range → 0–100%)
+  const bmiBarPct = bmi
+    ? Math.max(0, Math.min(100, ((bmi.value - 15) / 25) * 100))
+    : 0;
+
+  // Current goal mode (map goal → GOAL_MODES value)
+  const currentGoalMode =
+    goal === "gain_muscle" ? "gain_muscle" :
+    (goal === "lose_weight" || goal === "lose_fat") ? "lose_weight" :
+    "maintain";
 
   async function handleSave() {
     setSaving(true);
@@ -155,77 +191,182 @@ export default function ProfileScreen() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          <Text style={styles.heading}>You</Text>
-
-          {/* Avatar */}
-          <View style={styles.avatarSection}>
-            <View style={styles.bigAvatar}>
-              <Text style={styles.bigAvatarText}>{initial}</Text>
+          {/* ── Profile header ── */}
+          <View style={styles.profileHeader}>
+            <View style={styles.avatarWrap}>
+              <Text style={styles.avatarText}>{initial}</Text>
             </View>
-            <Text style={styles.emailText}>{profile?.email}</Text>
+            <View style={styles.profileInfo}>
+              <Text style={styles.profileName}>{profile?.name ?? "Your Profile"}</Text>
+              <Text style={styles.profileSubtitle}>AI Nutrition Profile</Text>
+              <Text style={styles.profileEmail}>{profile?.email}</Text>
+            </View>
           </View>
 
-          {/* Personal */}
-          <View style={styles.section}>
-            <Text style={styles.sectionLabel}>Personal</Text>
-            <Field label="name"  value={name} onChangeText={setName} />
-            <Field label="age"   value={age}  onChangeText={setAge}  keyboardType="numeric" />
+          {/* ── Weight + BMI card ── */}
+          {bmi && (
+            <View style={styles.card}>
+              <View>
+                <Text style={styles.cardEyebrow}>BODY METRICS</Text>
+                <Text style={styles.cardTitle}>Weight & BMI</Text>
+              </View>
+
+              <View style={styles.weightRow}>
+                <View>
+                  <Text style={styles.weightValue}>
+                    {profile?.current_weight_kg?.toFixed(1)}
+                    <Text style={styles.weightUnit}> kg</Text>
+                  </Text>
+                  <Text style={styles.weightLabel}>Current weight</Text>
+                </View>
+                {profile?.goal_weight_kg && (
+                  <View style={styles.goalWeightPill}>
+                    <Text style={styles.goalWeightText}>
+                      Goal: {profile.goal_weight_kg}kg
+                    </Text>
+                  </View>
+                )}
+              </View>
+
+              {/* BMI scale bar */}
+              <View style={styles.bmiSection}>
+                <View style={styles.bmiRow}>
+                  <Text style={styles.bmiValue}>{bmi.value}</Text>
+                  <View style={[styles.bmiCategoryBadge, { backgroundColor: bmiColor(bmi.category) + "33", borderColor: bmiColor(bmi.category) }]}>
+                    <Text style={[styles.bmiCategoryText, { color: bmiColor(bmi.category) }]}>{bmi.category}</Text>
+                  </View>
+                </View>
+
+                {/* Scale bar */}
+                <View style={styles.bmiScaleTrack}>
+                  {/* Coloured zones */}
+                  <View style={[styles.bmiZone, { flex: 23, backgroundColor: "#A8C5DA33" }]} />
+                  <View style={[styles.bmiZone, { flex: 25, backgroundColor: "#C8D5B933" }]} />
+                  <View style={[styles.bmiZone, { flex: 25, backgroundColor: "#E8B98A33" }]} />
+                  <View style={[styles.bmiZone, { flex: 27, backgroundColor: "#D97B7833" }]} />
+                  {/* Thumb */}
+                  <View style={[styles.bmiThumb, { left: `${bmiBarPct}%` as any }]} />
+                </View>
+                <View style={styles.bmiScaleLabels}>
+                  <Text style={styles.bmiScaleLabel}>15</Text>
+                  <Text style={styles.bmiScaleLabel}>18.5</Text>
+                  <Text style={styles.bmiScaleLabel}>25</Text>
+                  <Text style={styles.bmiScaleLabel}>30</Text>
+                  <Text style={styles.bmiScaleLabel}>40</Text>
+                </View>
+              </View>
+            </View>
+          )}
+
+          {/* ── Calorie goal card ── */}
+          <View style={styles.card}>
+            <View style={styles.cardHeader}>
+              <View style={styles.cardHeaderLeft}>
+                <Text style={styles.cardEyebrow}>NUTRITION TARGET</Text>
+                <Text style={styles.cardTitle}>Daily Goal</Text>
+              </View>
+              <View style={styles.aiSuggestedBadge}>
+                <Ionicons name="sparkles-outline" size={11} color={colors.primary} />
+                <Text style={styles.aiSuggestedText}>AI suggested</Text>
+              </View>
+            </View>
+
+            <View style={styles.calorieGoalRow}>
+              <Text style={styles.calorieGoalValue}>{targets.calories.toLocaleString()}</Text>
+              <Text style={styles.calorieGoalUnit}>kcal / day</Text>
+            </View>
+
+            {/* Macro breakdown */}
+            <View style={styles.macroBreakdown}>
+              {[
+                { label: "Protein", value: Math.round(targets.protein_g), color: colors.primary },
+                { label: "Carbs",   value: Math.round(targets.carbs_g),   color: "#A8C5DA" },
+                { label: "Fat",     value: Math.round(targets.fat_g),      color: "#C5B8E8" },
+              ].map(({ label, value, color }) => (
+                <View key={label} style={styles.macroBreakdownItem}>
+                  <View style={[styles.macroBreakdownDot, { backgroundColor: color }]} />
+                  <Text style={styles.macroBreakdownValue}>{value}g</Text>
+                  <Text style={styles.macroBreakdownLabel}>{label}</Text>
+                </View>
+              ))}
+            </View>
+
+            {/* Goal mode selector */}
+            <View style={styles.goalModeRow}>
+              {GOAL_MODES.map((gm) => (
+                <TouchableOpacity
+                  key={gm.value}
+                  style={[
+                    styles.goalModeBtn,
+                    currentGoalMode === gm.value && styles.goalModeBtnActive,
+                  ]}
+                  onPress={() => {
+                    if (gm.value === "maintain") setGoal("eat_healthier");
+                    else setGoal(gm.value);
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons
+                    name={gm.icon as any}
+                    size={14}
+                    color={currentGoalMode === gm.value ? "#FFFFFF" : colors.textMuted}
+                  />
+                  <Text
+                    style={[
+                      styles.goalModeBtnText,
+                      currentGoalMode === gm.value && styles.goalModeBtnTextActive,
+                    ]}
+                  >
+                    {gm.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
           </View>
 
-          {/* Body */}
-          <View style={styles.section}>
-            <Text style={styles.sectionLabel}>Body</Text>
-            <Field label="height (cm)"          value={height}     onChangeText={setHeight}     keyboardType="decimal-pad" />
-            <Field label="current weight (kg)"  value={weight}     onChangeText={setWeight}     keyboardType="decimal-pad" />
-            <Field label="goal weight (kg)"     value={goalWeight} onChangeText={setGoalWeight} keyboardType="decimal-pad" />
+          {/* ── Body stats section ── */}
+          <View style={styles.card}>
+            <Text style={styles.cardEyebrow}>BODY STATS</Text>
+            <Text style={styles.cardTitle}>Measurements</Text>
+
+            <View style={styles.statsGrid}>
+              <Field label="height (cm)"         value={height}     onChangeText={setHeight}     keyboardType="decimal-pad" />
+              <Field label="current weight (kg)" value={weight}     onChangeText={setWeight}     keyboardType="decimal-pad" />
+              <Field label="goal weight (kg)"    value={goalWeight} onChangeText={setGoalWeight} keyboardType="decimal-pad" />
+              <Field label="age"                 value={age}        onChangeText={setAge}         keyboardType="numeric"    />
+            </View>
           </View>
 
-          {/* Gender */}
-          <View style={styles.section}>
-            <Text style={styles.sectionLabel}>Gender</Text>
+          {/* ── Personal section ── */}
+          <View style={styles.card}>
+            <Text style={styles.cardEyebrow}>PERSONAL</Text>
+            <Text style={styles.cardTitle}>Profile Details</Text>
+
+            <Field label="display name" value={name} onChangeText={setName} />
+
+            <Text style={styles.subsectionLabel}>Gender</Text>
             <View style={styles.chipWrap}>
               {GENDERS.map((g) => (
-                <Chip
-                  key={g.value}
-                  label={g.label}
-                  selected={gender === g.value}
-                  onPress={() => setGender(g.value)}
-                />
+                <Chip key={g.value} label={g.label} selected={gender === g.value} onPress={() => setGender(g.value)} />
               ))}
             </View>
-          </View>
 
-          {/* Goal */}
-          <View style={styles.section}>
-            <Text style={styles.sectionLabel}>Goal</Text>
+            <Text style={styles.subsectionLabel}>Goal</Text>
             <View style={styles.chipWrap}>
               {GOALS.map((g) => (
-                <Chip
-                  key={g.value}
-                  label={g.label}
-                  selected={goal === g.value}
-                  onPress={() => setGoal(g.value)}
-                />
+                <Chip key={g.value} label={g.label} selected={goal === g.value} onPress={() => setGoal(g.value)} />
               ))}
             </View>
-          </View>
 
-          {/* Lifestyle */}
-          <View style={styles.section}>
-            <Text style={styles.sectionLabel}>Lifestyle</Text>
+            <Text style={styles.subsectionLabel}>Lifestyle</Text>
             <View style={styles.chipWrap}>
               {LIFESTYLES.map((l) => (
-                <Chip
-                  key={l.value}
-                  label={l.label}
-                  selected={lifestyle === l.value}
-                  onPress={() => setLifestyle(l.value)}
-                />
+                <Chip key={l.value} label={l.label} selected={lifestyle === l.value} onPress={() => setLifestyle(l.value)} />
               ))}
             </View>
           </View>
 
-          {/* Save */}
+          {/* ── Save button ── */}
           <TouchableOpacity
             style={[styles.saveBtn, saving && styles.saveBtnDisabled]}
             onPress={handleSave}
@@ -233,13 +374,19 @@ export default function ProfileScreen() {
             accessibilityRole="button"
           >
             {saving
-              ? <ActivityIndicator color={colors.text} />
-              : <Text style={styles.saveBtnText}>{saved ? "Saved!" : "Save changes"}</Text>
+              ? <ActivityIndicator color="#FFFFFF" />
+              : (
+                <View style={styles.saveBtnInner}>
+                  <Ionicons name="checkmark-outline" size={18} color="#FFFFFF" />
+                  <Text style={styles.saveBtnText}>{saved ? "Saved!" : "Save changes"}</Text>
+                </View>
+              )
             }
           </TouchableOpacity>
 
-          {/* Logout */}
+          {/* ── Logout ── */}
           <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} accessibilityRole="button">
+            <Ionicons name="log-out-outline" size={16} color={colors.error} />
             <Text style={styles.logoutText}>Log out</Text>
           </TouchableOpacity>
         </ScrollView>
@@ -254,69 +401,332 @@ const styles = StyleSheet.create({
   safe:   { flex: 1 },
   scroll: {
     paddingHorizontal: spacing.xl,
-    paddingTop:        spacing.xl,
+    paddingTop:        spacing.lg,
     paddingBottom:     spacing.xxl,
-    gap:               spacing.lg,
-  },
-  heading: {
-    fontFamily: fonts.heading700,
-    fontSize:   42,
-    color:      colors.text,
-    lineHeight: 44,
+    gap:               spacing.md,
   },
 
-  // ── Avatar section ──
-  avatarSection: {
-    alignItems: "center",
-    gap:        spacing.sm,
+  // ── Profile header ──
+  profileHeader: {
+    flexDirection: "row",
+    alignItems:    "center",
+    gap:           spacing.md,
+    marginBottom:  spacing.sm,
   },
-  bigAvatar: {
-    width:           80,
-    height:          80,
-    borderRadius:    40,
+  avatarWrap: {
+    width:           72,
+    height:          72,
+    borderRadius:    36,
     backgroundColor: colors.softPink,
     borderWidth:     2,
     borderColor:     colors.softPinkBorder,
     alignItems:      "center",
     justifyContent:  "center",
+    flexShrink:      0,
+    ...Platform.select({
+      ios: {
+        shadowColor:   colors.softPinkBorder,
+        shadowOffset:  { width: 0, height: 3 },
+        shadowOpacity: 0.3,
+        shadowRadius:  6,
+      },
+      android: { elevation: 3 },
+    }),
   },
-  bigAvatarText: {
+  avatarText: {
     fontFamily: fonts.heading700,
-    fontSize:   36,
+    fontSize:   30,
     color:      colors.text,
   },
-  emailText: {
+  profileInfo: {
+    flex: 1,
+    gap:  2,
+  },
+  profileName: {
+    fontFamily: fonts.heading700,
+    fontSize:   22,
+    color:      colors.text,
+    fontStyle:  "italic",
+  },
+  profileSubtitle: {
+    fontFamily:    fonts.body600,
+    fontSize:      11,
+    color:         colors.primary,
+    letterSpacing: 0.5,
+    textTransform: "uppercase",
+  },
+  profileEmail: {
+    fontFamily: fonts.body400,
+    fontSize:   12,
+    color:      colors.textMuted,
+    marginTop:  2,
+  },
+
+  // ── Card ──
+  card: {
+    backgroundColor: colors.bgCard,
+    borderRadius:    radius.lg,
+    borderWidth:     1,
+    borderColor:     colors.border,
+    padding:         spacing.md,
+    gap:             spacing.sm,
+    ...Platform.select({
+      ios: {
+        shadowColor:   colors.accentBorder,
+        shadowOffset:  { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius:  6,
+      },
+      android: { elevation: 2 },
+    }),
+  },
+  cardHeader: {
+    flexDirection:  "row",
+    justifyContent: "space-between",
+    alignItems:     "flex-start",
+  },
+  cardHeaderLeft: { gap: 1 },
+  cardEyebrow: {
+    fontFamily:    fonts.body600,
+    fontSize:      10,
+    color:         colors.primary,
+    letterSpacing: 1.2,
+    textTransform: "uppercase",
+  },
+  cardTitle: {
+    fontFamily: fonts.body700,
+    fontSize:   16,
+    color:      colors.text,
+  },
+  editIconBtn: {
+    width:           30,
+    height:          30,
+    borderRadius:    15,
+    backgroundColor: colors.primaryLight,
+    alignItems:      "center",
+    justifyContent:  "center",
+    borderWidth:     1,
+    borderColor:     colors.primaryBorder,
+  },
+
+  // ── Weight row ──
+  weightRow: {
+    flexDirection:  "row",
+    justifyContent: "space-between",
+    alignItems:     "flex-end",
+    marginTop:      spacing.xs,
+  },
+  weightValue: {
+    fontFamily: fonts.body700,
+    fontSize:   32,
+    color:      colors.text,
+  },
+  weightUnit: {
+    fontFamily: fonts.body400,
+    fontSize:   16,
+    color:      colors.textMuted,
+  },
+  weightLabel: {
+    fontFamily: fonts.body400,
+    fontSize:   11,
+    color:      colors.textMuted,
+  },
+  goalWeightPill: {
+    backgroundColor:  colors.primaryLight,
+    borderRadius:     radius.pill,
+    paddingHorizontal: 10,
+    paddingVertical:   4,
+    borderWidth:      1,
+    borderColor:      colors.primaryBorder,
+  },
+  goalWeightText: {
+    fontFamily: fonts.body600,
+    fontSize:   12,
+    color:      colors.primary,
+  },
+
+  // ── BMI scale ──
+  bmiSection: { gap: 6 },
+  bmiRow: {
+    flexDirection: "row",
+    alignItems:    "center",
+    gap:           spacing.sm,
+  },
+  bmiValue: {
+    fontFamily: fonts.body700,
+    fontSize:   26,
+    color:      colors.text,
+  },
+  bmiCategoryBadge: {
+    borderRadius:      radius.pill,
+    paddingHorizontal: 10,
+    paddingVertical:   3,
+    borderWidth:       1,
+  },
+  bmiCategoryText: {
+    fontFamily: fonts.body600,
+    fontSize:   12,
+  },
+  bmiScaleTrack: {
+    flexDirection: "row",
+    height:        10,
+    borderRadius:  5,
+    overflow:      "visible",
+    position:      "relative",
+  },
+  bmiZone: {
+    height: "100%",
+  },
+  bmiThumb: {
+    position:        "absolute",
+    top:             -3,
+    width:           16,
+    height:          16,
+    borderRadius:    8,
+    backgroundColor: colors.primary,
+    marginLeft:      -8,
+    borderWidth:     2,
+    borderColor:     "#FFFFFF",
+    ...Platform.select({
+      ios: {
+        shadowColor:   colors.primary,
+        shadowOffset:  { width: 0, height: 2 },
+        shadowOpacity: 0.5,
+        shadowRadius:  4,
+      },
+      android: { elevation: 4 },
+    }),
+  },
+  bmiScaleLabels: {
+    flexDirection:  "row",
+    justifyContent: "space-between",
+  },
+  bmiScaleLabel: {
+    fontFamily: fonts.body400,
+    fontSize:   9,
+    color:      colors.textMuted,
+  },
+
+  // ── Calorie goal ──
+  calorieGoalRow: {
+    flexDirection: "row",
+    alignItems:    "baseline",
+    gap:           spacing.xs,
+    marginTop:     spacing.xs,
+  },
+  calorieGoalValue: {
+    fontFamily: fonts.body700,
+    fontSize:   40,
+    color:      colors.text,
+  },
+  calorieGoalUnit: {
     fontFamily: fonts.body400,
     fontSize:   14,
     color:      colors.textMuted,
   },
+  aiSuggestedBadge: {
+    flexDirection:    "row",
+    alignItems:       "center",
+    gap:              4,
+    backgroundColor:  colors.primaryLight,
+    borderRadius:     radius.pill,
+    paddingHorizontal: 8,
+    paddingVertical:   4,
+    borderWidth:      1,
+    borderColor:      colors.primaryBorder,
+  },
+  aiSuggestedText: {
+    fontFamily: fonts.body600,
+    fontSize:   10,
+    color:      colors.primary,
+  },
 
-  // ── Sections ──
-  section: {
+  // ── Macro breakdown ──
+  macroBreakdown: {
+    flexDirection: "row",
+    gap:           spacing.md,
+  },
+  macroBreakdownItem: {
+    alignItems: "center",
+    gap:        3,
+  },
+  macroBreakdownDot: {
+    width:        10,
+    height:       10,
+    borderRadius: 5,
+  },
+  macroBreakdownValue: {
+    fontFamily: fonts.body700,
+    fontSize:   15,
+    color:      colors.text,
+  },
+  macroBreakdownLabel: {
+    fontFamily: fonts.body400,
+    fontSize:   10,
+    color:      colors.textMuted,
+  },
+
+  // ── Goal mode buttons ──
+  goalModeRow: {
+    flexDirection: "row",
+    gap:           spacing.xs,
+    marginTop:     spacing.xs,
+  },
+  goalModeBtn: {
+    flex:            1,
+    flexDirection:   "row",
+    alignItems:      "center",
+    justifyContent:  "center",
+    gap:             4,
+    backgroundColor: colors.bg,
+    borderRadius:    radius.pill,
+    paddingVertical: 9,
+    borderWidth:     1,
+    borderColor:     colors.border,
+  },
+  goalModeBtnActive: {
+    backgroundColor: colors.primary,
+    borderColor:     colors.primary,
+  },
+  goalModeBtnText: {
+    fontFamily: fonts.body500,
+    fontSize:   11,
+    color:      colors.textMuted,
+  },
+  goalModeBtnTextActive: {
+    color:      "#FFFFFF",
+    fontFamily: fonts.body600,
+  },
+
+  // ── Stats grid ──
+  statsGrid: {
     gap: spacing.sm,
   },
-  sectionLabel: {
+
+  // ── Subsection labels ──
+  subsectionLabel: {
     fontFamily:    fonts.body600,
-    fontSize:      12,
+    fontSize:      11,
     color:         colors.textMuted,
     textTransform: "uppercase",
-    letterSpacing: 0.8,
+    letterSpacing: 0.6,
+    marginTop:     spacing.xs,
   },
 
   // ── Fields ──
   field: {
-    backgroundColor: colors.bgSecondary,
+    backgroundColor: colors.bg,
     borderRadius:    radius.md,
-    borderWidth:     1.5,
+    borderWidth:     1,
     borderColor:     colors.border,
     paddingHorizontal: spacing.md,
-    paddingVertical:   12,
+    paddingVertical: 12,
     gap:             4,
   },
   fieldLabel: {
-    fontFamily: fonts.body500,
-    fontSize:   11,
-    color:      colors.textMuted,
+    fontFamily:    fonts.body500,
+    fontSize:      10,
+    color:         colors.textMuted,
     textTransform: "uppercase",
     letterSpacing: 0.5,
   },
@@ -334,53 +744,72 @@ const styles = StyleSheet.create({
     gap:           spacing.sm,
   },
   chip: {
-    paddingHorizontal: 18,
-    paddingVertical:   10,
+    paddingHorizontal: 14,
+    paddingVertical:   8,
     borderRadius:      radius.pill,
-    borderWidth:       2,
+    borderWidth:       1,
     borderColor:       colors.border,
-    backgroundColor:   colors.bgSecondary,
+    backgroundColor:   colors.bg,
   },
   chipActive: {
-    backgroundColor: colors.pastelBlue,
-    borderColor:     colors.pastelBlueBorder,
+    backgroundColor: colors.primaryLight,
+    borderColor:     colors.primaryBorder,
   },
   chipText: {
-    fontFamily: fonts.body600,
-    fontSize:   14,
+    fontFamily: fonts.body500,
+    fontSize:   13,
     color:      colors.textMuted,
   },
-  chipTextActive: { color: colors.text },
+  chipTextActive: {
+    color:      colors.primary,
+    fontFamily: fonts.body600,
+  },
 
   // ── Save button ──
   saveBtn: {
-    backgroundColor: colors.accent,
+    backgroundColor: colors.primary,
     borderRadius:    radius.pill,
-    borderWidth:     2,
-    borderColor:     colors.accentBorder,
     paddingVertical: 16,
     alignItems:      "center",
+    justifyContent:  "center",
     marginTop:       spacing.sm,
+    ...Platform.select({
+      ios: {
+        shadowColor:   colors.primary,
+        shadowOffset:  { width: 0, height: 4 },
+        shadowOpacity: 0.35,
+        shadowRadius:  8,
+      },
+      android: { elevation: 4 },
+    }),
   },
   saveBtnDisabled: { opacity: 0.5 },
+  saveBtnInner: {
+    flexDirection: "row",
+    alignItems:    "center",
+    gap:           spacing.sm,
+  },
   saveBtnText: {
-    fontFamily: fonts.heading700,
-    fontSize:   20,
-    color:      colors.text,
+    fontFamily: fonts.body700,
+    fontSize:   16,
+    color:      "#FFFFFF",
   },
 
   // ── Logout ──
   logoutBtn: {
+    flexDirection:   "row",
     alignItems:      "center",
+    justifyContent:  "center",
+    gap:             spacing.xs,
     paddingVertical: 14,
     borderRadius:    radius.pill,
-    borderWidth:     1.5,
+    borderWidth:     1,
     borderColor:     colors.border,
-    backgroundColor: colors.bgSecondary,
+    backgroundColor: colors.bgCard,
   },
   logoutText: {
     fontFamily: fonts.body600,
-    fontSize:   15,
+    fontSize:   14,
     color:      colors.error,
   },
 });

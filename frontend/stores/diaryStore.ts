@@ -34,9 +34,11 @@ export interface MealEntry {
   type: MealType;
   photos: FoodPhoto[]; // max 5
   totalCalories: number;
+  /** ISO timestamp of when the log was created */
+  createdAt: string;
   /** Selected mood stickers for this meal */
   mood: string[];
-  /** Free-text diary note */
+  /** AI-generated notes / insight from Gemini analysis */
   note: string;
 }
 
@@ -213,15 +215,16 @@ function foodLogToMealEntry(log: FoodLogResponse): MealEntry {
         protein_g,
         carbs_g,
         fat_g,
-        fiber_g:     0,
+        fiber_g:     log.fibre_g ?? 0,
         proteinDots: calcDots(protein_g, DAILY_TARGETS.protein_g),
         carbsDots:   calcDots(carbs_g,   DAILY_TARGETS.carbs_g),
         fatDots:     calcDots(fat_g,     DAILY_TARGETS.fat_g),
-        fiberDots:   0,
+        fiberDots:   calcDots(log.fibre_g ?? 0, 25),
       },
     }],
     totalCalories: calories,
-    mood: log.mood ?? [],
-    note: log.notes ?? "",
+    createdAt:     log.created_at,
+    mood:          log.mood ?? [],
+    note:          log.notes ?? "",
   };
 }

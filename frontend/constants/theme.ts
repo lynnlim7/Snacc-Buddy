@@ -4,14 +4,19 @@ import type { TextStyle, ViewStyle } from "react-native";
 // ─── Colour palette ───────────────────────────────────────────
 export const colors = {
   // Journal backgrounds
-  bg:           "#F8F3EA", // Parchment — main background
+  bg:           "#F5F0EB", // Warm cream — main background (Figma)
   bgSecondary:  "#FFFDF8", // Off-white paper — cards / input fields
-  bgCard:       "#FFF9F0", // Warm white for floating cards
+  bgCard:       "#FFFFFF", // Pure white — content cards (Figma)
 
   // Text
-  text:         "#4A4036", // Warm dark brown — primary text
+  text:         "#2D1B24", // Deep rose-brown — primary text (Figma)
   textMuted:    "#9B8578", // Muted warm — secondary text
   textLight:    "#C4AFA6", // Light — hints, placeholders
+
+  // Primary brand — mauve rose (Figma active states, CTAs, rings)
+  primary:       "#9B5468", // Active tab, main CTA, donut fill
+  primaryLight:  "#EDE0E3", // Tag backgrounds, pill fills
+  primaryBorder: "#C49AA8", // Mauve border
 
   // Brand accents
   accent:       "#E8B98A", // Warm peach — primary CTA

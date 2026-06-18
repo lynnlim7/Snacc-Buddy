@@ -171,12 +171,13 @@ export function MealLogModal({ visible, onClose, onSave, prefillType }: Props) {
         nutrition: result.nutrition,
       };
       const meal: MealEntry = {
-        id: String(saved.id),
-        type: mealType,
-        photos: [photo],
+        id:            String(saved.id),
+        type:          mealType,
+        photos:        [photo],
         totalCalories: result.nutrition.calories,
-        mood: [],
-        note: "",
+        createdAt:     new Date().toISOString(),
+        mood:          [],
+        note:          "",
       };
       onSave(meal);
       reset();

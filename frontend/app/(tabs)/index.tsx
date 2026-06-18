@@ -28,6 +28,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { PaperBackground } from "../../components/PaperBackground";
 import { MealLogModal } from "../../components/MealLogModal";
+import { DonutRing } from "../../components/DonutRing";
 import { foodApi } from "../../services/api";
 import {
   useDiaryStore,
@@ -85,150 +86,49 @@ function RuledLines() {
 
 // ─── Polaroid strip ───────────────────────────────────────────
 
-function PolaroidStrip({ photos }: { photos: MealEntry["photos"] }) {
-  if (photos.length === 0) return null;
-  return (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={styles.polaroidScroll}
-    >
-      {photos.map((photo, i) => (
-        <View
-          key={photo.id}
-          style={[
-            styles.polaroid,
-            { transform: [{ rotate: POLAROID_ROTATIONS[i % POLAROID_ROTATIONS.length] }] },
-          ]}
-        >
-          {photo.uri ? (
-            <Image source={{ uri: photo.uri }} style={styles.polaroidImg} resizeMode="cover" />
-          ) : (
-            <View style={[styles.polaroidImg, styles.polaroidPlaceholder]}>
-              <Ionicons name="restaurant-outline" size={28} color={colors.textLight} />
-            </View>
-          )}
-          <Text style={styles.polaroidCaption} numberOfLines={1}>{photo.name}</Text>
-        </View>
-      ))}
-    </ScrollView>
-  );
-}
-
-// ─── Mood stickers ────────────────────────────────────────────
-
-function MoodSection({
-  moods,
-  onToggle,
-}: {
-  moods: string[];
-  onToggle: (mood: string) => void;
-}) {
-  return (
-    <View style={styles.moodSection}>
-      <Text style={styles.moodLabel}>mood</Text>
-      <View style={styles.moodGrid}>
-        {MOODS.map((mood) => {
-          const active = moods.includes(mood);
-          return (
-            <TouchableOpacity
-              key={mood}
-              style={[styles.moodSticker, active && styles.moodStickerActive]}
-              onPress={() => onToggle(mood)}
-              activeOpacity={0.75}
-            >
-              <Text style={[styles.moodStickerText, active && styles.moodStickerTextActive]}>
-                {mood}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-    </View>
-  );
-}
-
-// ─── Notes patch ──────────────────────────────────────────────
-
-function NotesPatch({
-  note,
-  onSave,
-}: {
-  note: string;
-  onSave: (text: string) => void;
-}) {
-  const [text, setText] = useState(note);
-  const dirty = text.trim() !== note.trim();
-
-  // Sync if note was externally reset (e.g. backend refresh)
-  useEffect(() => { setText(note); }, [note]);
-
-  const handleSave = useCallback(() => { if (dirty) onSave(text); }, [dirty, onSave, text]);
-
-  return (
-    <View style={styles.notesPatch}>
-      <View style={styles.tapeLeft} />
-      <View style={styles.tapeRight} />
-
-      <View style={styles.notesHeader}>
-        <Text style={styles.notesLabel}>note</Text>
-        {dirty && (
-          <TouchableOpacity onPress={handleSave} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
-            <Text style={styles.notesSave}>save</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-      <TextInput
-        style={styles.notesInput}
-        value={text}
-        onChangeText={setText}
-        onBlur={handleSave}
-        placeholder="how was this meal?.."
-        placeholderTextColor={colors.textLight}
-        multiline
-        maxLength={200}
-      />
-    </View>
-  );
-}
-
 // ─── Meal row ─────────────────────────────────────────────────
 
 function MealRow({
   meal,
   date,
-  onEditPhoto,
-  onDeletePhoto,
+  onDeleteMeal,
 }: {
   meal: MealEntry;
   date: string;
-  onEditPhoto: (photoId: string) => void;
-  onDeletePhoto: (photoId: string) => void;
+  onDeleteMeal: () => void;
 }) {
-  const updateMealMood  = useDiaryStore((s) => s.updateMealMood);
-  const updateMealNote  = useDiaryStore((s) => s.updateMealNote);
   const [expanded, setExpanded] = useState(false);
 
   const liftAnim = useRef(new Animated.Value(1)).current;
 
   function onPressIn() {
-    Animated.spring(liftAnim, {
-      toValue: 1.015, speed: 30, bounciness: 0, useNativeDriver: true,
-    }).start();
+    Animated.spring(liftAnim, { toValue: 1.015, speed: 30, bounciness: 0, useNativeDriver: true }).start();
   }
   function onPressOut() {
-    Animated.spring(liftAnim, {
-      toValue: 1, speed: 20, bounciness: 0, useNativeDriver: true,
-    }).start();
+    Animated.spring(liftAnim, { toValue: 1, speed: 20, bounciness: 0, useNativeDriver: true }).start();
   }
 
-  function toggleMood(mood: string) {
-    const next = meal.mood.includes(mood)
-      ? meal.mood.filter((m) => m !== mood)
-      : [...meal.mood, mood];
-    updateMealMood(date, meal.id, next);
-    foodApi.patchLog(meal.id, { mood: next }).catch(() => {});
-  }
+  // Aggregate macros across all photos in the meal
+  const totals = meal.photos.reduce(
+    (acc, p) => ({
+      carbs:   acc.carbs   + (p.nutrition.carbs_g   ?? 0),
+      protein: acc.protein + (p.nutrition.protein_g ?? 0),
+      fat:     acc.fat     + (p.nutrition.fat_g     ?? 0),
+      fiber:   acc.fiber   + (p.nutrition.fiber_g   ?? 0),
+    }),
+    { carbs: 0, protein: 0, fat: 0, fiber: 0 }
+  );
+  const maxMacro = Math.max(totals.carbs, totals.protein, totals.fat, totals.fiber, 1);
+
+  // Format logged time from createdAt
+  const loggedTime = meal.createdAt
+    ? new Date(meal.createdAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false })
+    : null;
+
+  // Food name: join all photo names
+  const foodName = meal.photos.length > 0
+    ? meal.photos.map((p) => p.name).join(", ")
+    : meal.type;
 
   return (
     <Animated.View
@@ -238,64 +138,102 @@ function MealRow({
         { transform: [{ scale: liftAnim }] },
       ]}
     >
-      {/* ── Header row — full row is the expand toggle ── */}
+      {/* ── Header row ── */}
       <TouchableOpacity
         style={styles.mealHeaderRow}
         onPress={() => setExpanded((v) => !v)}
         onPressIn={onPressIn}
         onPressOut={onPressOut}
-        activeOpacity={0.85}
+        activeOpacity={0.88}
         accessibilityRole="button"
         accessibilityLabel={`${meal.type}, ${meal.totalCalories} calories`}
       >
-        <Text style={styles.mealTypeText}>{meal.type}</Text>
-        <Text style={styles.dotLeader} numberOfLines={1}>{DOT_LEADER}</Text>
-        <Text style={styles.mealCalText}>{meal.totalCalories} kcal</Text>
+        {/* Thumbnail */}
+        {meal.photos[0]?.uri ? (
+          <Image source={{ uri: meal.photos[0].uri }} style={styles.mealThumb} resizeMode="cover" />
+        ) : (
+          <View style={[styles.mealThumb, styles.mealThumbPlaceholder]}>
+            <Ionicons name="restaurant-outline" size={22} color={colors.textLight} />
+          </View>
+        )}
+
+        {/* Centre info */}
+        <View style={styles.mealHeaderInfo}>
+          {/* Type tag + time */}
+          <View style={styles.mealMetaRow}>
+            <View style={styles.mealTypeTag}>
+              <Text style={styles.mealTypeTagText}>{meal.type}</Text>
+            </View>
+            {loggedTime && (
+              <View style={styles.mealTimeRow}>
+                <Ionicons name="time-outline" size={11} color={colors.textMuted} />
+                <Text style={styles.mealTimeText}>{loggedTime}</Text>
+              </View>
+            )}
+          </View>
+          {/* Food name */}
+          <Text style={styles.mealNameText} numberOfLines={1}>{foodName}</Text>
+        </View>
+
+        {/* Calories + chevron */}
+        <View style={styles.mealCalWrapper}>
+          <View style={styles.mealCalRow}>
+            <Text style={styles.mealCalValue}>{meal.totalCalories}</Text>
+            <Text style={styles.mealCalUnit}>kcal</Text>
+          </View>
+          <Ionicons name={expanded ? "chevron-up" : "chevron-down"} size={16} color={colors.textMuted} />
+        </View>
       </TouchableOpacity>
 
       {/* ── Expanded content ── */}
       {expanded && (
         <View style={styles.expandedContent}>
-          {/* Food items with individual edit + delete */}
-          {meal.photos.map((photo) => (
-            <View key={photo.id} style={styles.photoRow}>
-              <View style={styles.photoBullet} />
-              <Text style={styles.photoName} numberOfLines={1}>{photo.name}</Text>
-              <View style={styles.photoItemActions}>
-                <TouchableOpacity
-                  style={styles.actionBtn}
-                  onPress={() => onEditPhoto(photo.id)}
-                  hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                  accessibilityLabel={`Edit ${photo.name}`}
-                >
-                  <Ionicons name="pencil-outline" size={13} color={colors.textMuted} />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.actionBtn}
-                  onPress={() => onDeletePhoto(photo.id)}
-                  hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                  accessibilityLabel={`Delete ${photo.name}`}
-                >
-                  <Ionicons name="trash-outline" size={13} color={colors.error} />
-                </TouchableOpacity>
+          {/* Divider */}
+          <View style={styles.expandedDivider} />
+
+          {/* Macro bars */}
+          <View style={styles.macroBarsSection}>
+            {[
+              { label: "Carbs",   value: Math.round(totals.carbs),   color: "#A8C5DA" },
+              { label: "Protein", value: Math.round(totals.protein), color: "#9B5468" },
+              { label: "Fat",     value: Math.round(totals.fat),     color: "#C5B8E8" },
+              { label: "Fiber",   value: Math.round(totals.fiber),   color: "#C8D5B9" },
+            ].map(({ label, value, color }) => (
+              <View key={label} style={styles.macroBarRow}>
+                <Text style={styles.macroBarLabel}>{label}</Text>
+                <View style={styles.macroBarTrack}>
+                  <View
+                    style={[
+                      styles.macroBarFill,
+                      {
+                        width: `${Math.max((value / maxMacro) * 100, value > 0 ? 3 : 0)}%` as any,
+                        backgroundColor: color,
+                      },
+                    ]}
+                  />
+                </View>
+                <Text style={styles.macroBarValue}>{value}g</Text>
               </View>
+            ))}
+          </View>
+
+          {/* AI insight card */}
+          {meal.note ? (
+            <View style={styles.insightCard}>
+              <Ionicons name="sparkles-outline" size={14} color={colors.primary} style={{ marginTop: 1 }} />
+              <Text style={styles.insightText}>{meal.note}</Text>
             </View>
-          ))}
+          ) : null}
 
-          {/* Polaroid thumbnails */}
-          <PolaroidStrip photos={meal.photos} />
-
-          {/* Mood stickers */}
-          <MoodSection moods={meal.mood} onToggle={toggleMood} />
-
-          {/* Notes sticky patch */}
-          <NotesPatch
-            note={meal.note}
-            onSave={(text) => {
-              updateMealNote(date, meal.id, text);
-              foodApi.patchLog(meal.id, { notes: text }).catch(() => {});
-            }}
-          />
+          {/* Remove entry */}
+          <TouchableOpacity
+            style={styles.removeEntryBtn}
+            onPress={onDeleteMeal}
+            accessibilityLabel="Remove this meal entry"
+          >
+            <Ionicons name="trash-outline" size={13} color={colors.error} />
+            <Text style={styles.removeEntryText}>Remove entry</Text>
+          </TouchableOpacity>
         </View>
       )}
     </Animated.View>
@@ -316,62 +254,64 @@ function EmptyDiary({ isToday }: { isToday: boolean }) {
   );
 }
 
-// ─── Calorie card ─────────────────────────────────────────────
+// ─── Summary card (donut + macros) ───────────────────────────
 
-function CalorieCard({ total, goal, isToday }: { total: number; goal: number; isToday: boolean }) {
-  const pct     = goal > 0 ? Math.min(1, total / goal) : 0;
-  const reached = Math.round(pct * 100);
-  const fillPct = total > 0 ? Math.max(3, reached) : 0;
-
-  return (
-    <View style={styles.calorieCard}>
-      <Text style={styles.calCardLabel}>{isToday ? "Today's calories" : "Day's calories"}</Text>
-      <Text style={styles.calCardValue}>
-        {total > 0 ? total.toLocaleString() : "0"}
-      </Text>
-
-      {/* Progress bar */}
-      <View style={styles.progressTrack}>
-        {fillPct > 0 && (
-          <View style={[styles.progressFill, { width: `${fillPct}%` as any }]} />
-        )}
-      </View>
-
-      <Text style={styles.calCardGoal}>
-        Goal: {goal.toLocaleString()} kcal{"  ·  "}{reached}% reached
-      </Text>
-    </View>
-  );
-}
-
-// ─── Macro target row ────────────────────────────────────────
-
-function MacroTargetRow({
+function SummaryCard({
+  total, goal,
   protein, carbs, fat,
   proteinTarget, carbsTarget, fatTarget,
 }: {
+  total: number; goal: number;
   protein: number; carbs: number; fat: number;
   proteinTarget: number; carbsTarget: number; fatTarget: number;
 }) {
-  const items = [
-    { label: "Protein", value: Math.round(protein), target: proteinTarget, color: "#E8A598" },
-    { label: "Carbs",   value: Math.round(carbs),   target: carbsTarget,   color: "#A8C5DA" },
-    { label: "Fat",     value: Math.round(fat),      target: fatTarget,     color: "#C5B8E8" },
-  ];
+  const progress  = goal > 0 ? Math.min(1, total / goal) : 0;
+  const remaining = Math.max(0, goal - total);
+
   return (
-    <View style={styles.macroRow}>
-      {items.map(({ label, value, target, color }) => {
-        const pct = target > 0 ? Math.min(1, value / target) : 0;
-        return (
-          <View key={label} style={styles.macroItem}>
-            <Text style={styles.macroLabel}>{label}</Text>
-            <View style={styles.macroBarBg}>
-              <View style={[styles.macroBarFill, { width: `${Math.round(pct * 100)}%` as any, backgroundColor: color }]} />
-            </View>
-            <Text style={styles.macroValue}>{value}<Text style={styles.macroUnit}>g</Text> / {target}g</Text>
+    <View style={styles.summaryCard}>
+      {/* ── Left: donut ring ── */}
+      <DonutRing
+        size={100}
+        strokeWidth={10}
+        progress={progress}
+        color={colors.primary}
+        bgColor={colors.primaryLight}
+      >
+        <View style={styles.donutCenter}>
+          <Text style={styles.donutCalories}>{total > 0 ? Math.round(total).toLocaleString() : "0"}</Text>
+          <Text style={styles.donutUnit}>kcal</Text>
+        </View>
+      </DonutRing>
+
+      {/* ── Right: goal info + macro chips ── */}
+      <View style={styles.summaryRight}>
+        <View style={styles.summaryGoalRow}>
+          <View>
+            <Text style={styles.summaryDailyGoalLabel}>Daily goal</Text>
+            <Text style={styles.summaryRemaining}>
+              {remaining.toLocaleString()} remaining
+            </Text>
           </View>
-        );
-      })}
+          <Text style={styles.summaryGoalKcal}>{goal.toLocaleString()} kcal</Text>
+        </View>
+
+        {/* Macro chips */}
+        <View style={styles.macroChipRow}>
+          <View style={styles.macroChipPill}>
+            <Text style={styles.macroChipValue}>{Math.round(carbs)}g</Text>
+            <Text style={styles.macroChipLabel}>Carbs</Text>
+          </View>
+          <View style={styles.macroChipPill}>
+            <Text style={styles.macroChipValue}>{Math.round(protein)}g</Text>
+            <Text style={styles.macroChipLabel}>Protein</Text>
+          </View>
+          <View style={styles.macroChipPill}>
+            <Text style={styles.macroChipValue}>{Math.round(fat)}g</Text>
+            <Text style={styles.macroChipLabel}>Fat</Text>
+          </View>
+        </View>
+      </View>
     </View>
   );
 }
@@ -466,7 +406,10 @@ export default function DiaryScreen() {
     }
     handleModalClose();
     foodApi.getDailySummary(selectedDate)
-      .then((s) => setDailyCalories(s.total_calories))
+      .then((s) => {
+        setDailyCalories(s.total_calories);
+        setDailyMacros({ protein: s.total_protein_g, carbs: s.total_carbs_g, fat: s.total_fat_g });
+      })
       .catch(() => {});
   }
 
@@ -474,10 +417,29 @@ export default function DiaryScreen() {
     setRefreshing(true);
     await Promise.allSettled([
       loadLogsFromBackend(selectedDate),
-      foodApi.getDailySummary(selectedDate).then((s) => setDailyCalories(s.total_calories)),
+      foodApi.getDailySummary(selectedDate).then((s) => {
+        setDailyCalories(s.total_calories);
+        setDailyMacros({ protein: s.total_protein_g, carbs: s.total_carbs_g, fat: s.total_fat_g });
+      }),
       foodApi.getStreak().then(setStreak),
     ]);
     setRefreshing(false);
+  }
+
+  /** Deletes the entire meal entry (all photos) */
+  async function handleDeleteMeal(mealId: string) {
+    try {
+      await foodApi.deleteLog(mealId);
+      deleteMeal(selectedDate, mealId);
+      foodApi.getDailySummary(selectedDate)
+        .then((s) => {
+          setDailyCalories(s.total_calories);
+          setDailyMacros({ protein: s.total_protein_g, carbs: s.total_carbs_g, fat: s.total_fat_g });
+        })
+        .catch(() => {});
+    } catch {
+      Alert.alert("Couldn't delete", "Check your connection and try again.");
+    }
   }
 
   /** Opens the modal to re-upload a specific photo */
@@ -500,7 +462,10 @@ export default function DiaryScreen() {
         deletePhotoFromMeal(selectedDate, mealId, photoId);
       }
       foodApi.getDailySummary(selectedDate)
-        .then((s) => setDailyCalories(s.total_calories))
+        .then((s) => {
+          setDailyCalories(s.total_calories);
+          setDailyMacros({ protein: s.total_protein_g, carbs: s.total_carbs_g, fat: s.total_fat_g });
+        })
         .catch(() => {});
     } catch {
       Alert.alert("Couldn't delete", "Check your connection and try again.");
@@ -520,49 +485,50 @@ export default function DiaryScreen() {
             <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
           }
         >
-          {/* ── Header: greeting + streak + avatar ── */}
+          {/* ── Header ── */}
           <View style={styles.headerRow}>
-            {/* Left: greeting + diary title */}
-            <View style={styles.headerLeft}>
-              <Text style={styles.greetingText}>{greeting}</Text>
+            <View>
+              <Text style={styles.eyebrow}>SNACC BUDDY</Text>
               <Text style={styles.diaryTitle}>
-                {displayName === "My" ? "My Diary" : `${displayName}'s Diary`}
+                {displayName === "My" ? "My Food Diary" : `${displayName}'s Food Diary`}
               </Text>
             </View>
-
-            {/* Right: streak badge + user avatar */}
             <View style={styles.headerRight}>
+              {/* Streak badge */}
               <View style={styles.streakBadge}>
-                <Ionicons name="flame" size={16} color="#E8724A" />
+                <Ionicons name="flame" size={13} color="#E8724A" />
                 <Text style={styles.streakCount}>{streak}</Text>
               </View>
+              {/* Avatar */}
               <View style={styles.avatar}>
                 <Text style={styles.avatarText}>{initial}</Text>
               </View>
             </View>
           </View>
 
-          {/* ── Date ── */}
-          <View style={styles.dateNav}>
-            <TouchableOpacity onPress={goToPrevDay} style={styles.dateNavBtn} accessibilityLabel="Previous day">
-              <Ionicons name="chevron-back" size={20} color={colors.textMuted} />
-            </TouchableOpacity>
-            <Text style={styles.dateText}>{dateDisplay}</Text>
-            <TouchableOpacity
-              onPress={goToNextDay}
-              style={styles.dateNavBtn}
-              disabled={isToday}
-              accessibilityLabel="Next day"
-            >
-              <Ionicons name="chevron-forward" size={20} color={isToday ? colors.border : colors.textMuted} />
-            </TouchableOpacity>
+          {/* ── Date row ── */}
+          <View style={styles.dateRow}>
+            <Text style={styles.dateSubheading}>Today's Food Diary</Text>
+            <View style={styles.dateNav}>
+              <TouchableOpacity onPress={goToPrevDay} style={styles.dateNavBtn} accessibilityLabel="Previous day">
+                <Ionicons name="chevron-back" size={18} color={colors.textMuted} />
+              </TouchableOpacity>
+              <Text style={styles.dateText}>{dateDisplay}</Text>
+              <TouchableOpacity
+                onPress={goToNextDay}
+                style={styles.dateNavBtn}
+                disabled={isToday}
+                accessibilityLabel="Next day"
+              >
+                <Ionicons name="chevron-forward" size={18} color={isToday ? colors.border : colors.textMuted} />
+              </TouchableOpacity>
+            </View>
           </View>
 
-          {/* ── Calorie card ── */}
-          <CalorieCard total={dailyCalories} goal={calorieGoal} isToday={isToday} />
-
-          {/* ── Macro targets ── */}
-          <MacroTargetRow
+          {/* ── Summary card (donut + macros) ── */}
+          <SummaryCard
+            total={dailyCalories}
+            goal={calorieGoal}
             protein={dailyMacros.protein}
             carbs={dailyMacros.carbs}
             fat={dailyMacros.fat}
@@ -584,12 +550,7 @@ export default function DiaryScreen() {
                   key={meal.id}
                   meal={meal}
                   date={selectedDate}
-                  onEditPhoto={(photoId) =>
-                    handleEditPhoto(meal.id, photoId, meal.type)
-                  }
-                  onDeletePhoto={(photoId) =>
-                    handleDeletePhoto(meal.id, photoId)
-                  }
+                  onDeleteMeal={() => handleDeleteMeal(meal.id)}
                 />
               ))
             )}
@@ -604,7 +565,7 @@ export default function DiaryScreen() {
             accessibilityRole="button"
             accessibilityLabel="Log a meal"
           >
-            <Ionicons name="add" size={30} color={colors.text} />
+            <Ionicons name="add" size={28} color="#FFFFFF" />
           </TouchableOpacity>
         )}
 
@@ -646,41 +607,43 @@ const styles = StyleSheet.create({
     flexDirection:  "row",
     justifyContent: "space-between",
     alignItems:     "flex-start",
-    marginBottom:   spacing.sm,
+    marginBottom:   spacing.md,
   },
-  headerLeft: {
-    gap: 2,
-  },
-  greetingText: {
-    fontFamily: fonts.body400,
-    fontSize:   14,
-    color:      colors.textMuted,
+  eyebrow: {
+    fontFamily:    fonts.body600,
+    fontSize:      11,
+    color:         colors.primary,
+    letterSpacing: 1.5,
+    textTransform: "uppercase",
+    marginBottom:  2,
   },
   diaryTitle: {
-    fontFamily: fonts.body700,
-    fontSize:   18,
-    color:      colors.text,
+    fontFamily:  fonts.heading700,
+    fontSize:    28,
+    color:       colors.text,
+    fontStyle:   "italic",
   },
   headerRight: {
     flexDirection: "row",
     alignItems:    "center",
     gap:           spacing.sm,
+    marginTop:     2,
   },
-  streakBadge: {
+  calPill: {
     flexDirection:   "row",
     alignItems:      "center",
     gap:             4,
-    backgroundColor: colors.bgSecondary,
+    backgroundColor: colors.primaryLight,
     borderRadius:    radius.pill,
     paddingHorizontal: 10,
     paddingVertical:   5,
-    borderWidth:     1.5,
-    borderColor:     colors.border,
+    borderWidth:     1,
+    borderColor:     colors.primaryBorder,
   },
-  streakCount: {
-    fontFamily: fonts.body700,
-    fontSize:   13,
-    color:      colors.text,
+  calPillText: {
+    fontFamily: fonts.body600,
+    fontSize:   12,
+    color:      colors.primary,
   },
   avatar: {
     width:           36,
@@ -698,120 +661,143 @@ const styles = StyleSheet.create({
     color:      colors.text,
   },
 
-  // ── Date ──
+  // ── Date row ──
+  dateRow: {
+    gap:          2,
+    marginBottom: spacing.md,
+  },
+  dateSubheading: {
+    fontFamily: fonts.body400,
+    fontSize:   12,
+    color:      colors.textMuted,
+    letterSpacing: 0.3,
+  },
   dateNav: {
     flexDirection: "row",
     alignItems:    "center",
-    marginBottom:  spacing.md,
-    gap:           4,
+    gap:           2,
   },
   dateNavBtn: {
     padding: 4,
   },
   dateText: {
     fontFamily: fonts.heading600,
-    fontSize:   26,
+    fontSize:   20,
     color:      colors.text,
-    flexShrink: 1,
   },
 
-  // ── Calorie card ──
-  calorieCard: {
-    backgroundColor: colors.softPink,
+  // ── Summary card (donut + macros) ──
+  summaryCard: {
+    backgroundColor: colors.bgCard,
     borderRadius:    radius.lg,
-    borderWidth:     1.5,
-    borderColor:     colors.softPinkBorder,
+    borderWidth:     1,
+    borderColor:     colors.border,
     padding:         spacing.md,
-    gap:             spacing.sm,
-    marginBottom:    spacing.sm,
+    flexDirection:   "row",
+    alignItems:      "center",
+    gap:             spacing.md,
+    marginBottom:    spacing.md,
     ...Platform.select({
       ios: {
-        shadowColor:   colors.softPinkBorder,
-        shadowOffset:  { width: 0, height: 3 },
-        shadowOpacity: 0.3,
-        shadowRadius:  0,
+        shadowColor:   colors.accentBorder,
+        shadowOffset:  { width: 0, height: 2 },
+        shadowOpacity: 0.12,
+        shadowRadius:  8,
       },
-      android: { elevation: 3 },
+      android: { elevation: 2 },
     }),
   },
-  calCardLabel: {
+  donutCenter: {
+    alignItems:     "center",
+    justifyContent: "center",
+  },
+  donutCalories: {
+    fontFamily:    fonts.body700,
+    fontSize:      18,
+    color:         colors.text,
+    lineHeight:    20,
+  },
+  donutUnit: {
+    fontFamily: fonts.body400,
+    fontSize:   10,
+    color:      colors.textMuted,
+  },
+  summaryRight: {
+    flex: 1,
+    gap:  spacing.sm,
+  },
+  summaryGoalRow: {
+    flexDirection:  "row",
+    justifyContent: "space-between",
+    alignItems:     "flex-start",
+  },
+  summaryDailyGoalLabel: {
+    fontFamily:    fonts.body400,
+    fontSize:      11,
+    color:         colors.textMuted,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  summaryRemaining: {
+    fontFamily: fonts.body700,
+    fontSize:   14,
+    color:      colors.text,
+  },
+  summaryGoalKcal: {
     fontFamily: fonts.body600,
+    fontSize:   12,
+    color:      colors.textMuted,
+  },
+  macroChipRow: {
+    flexDirection: "row",
+    gap:           spacing.xs,
+  },
+  macroChipPill: {
+    flex:            1,
+    backgroundColor: colors.primaryLight,
+    borderRadius:    radius.sm,
+    paddingVertical: 6,
+    alignItems:      "center",
+  },
+  macroChipValue: {
+    fontFamily: fonts.body700,
     fontSize:   13,
     color:      colors.text,
-    opacity:    0.7,
   },
-  calCardValue: {
-    fontFamily:   fonts.heading700,
-    fontSize:     52,
-    color:        colors.text,
-    lineHeight:   56,
-    letterSpacing: -1,
-  },
-  progressTrack: {
-    height:          10,
-    borderRadius:    5,
-    backgroundColor: "rgba(74, 64, 54, 0.12)",
-    overflow:        "hidden",
-  },
-  progressFill: {
-    height:          "100%",
-    borderRadius:    5,
-    backgroundColor: colors.softPinkBorder,
-  },
-  calCardGoal: {
+  macroChipLabel: {
     fontFamily: fonts.body400,
-    fontSize:   12,
-    color:      colors.text,
-    opacity:    0.6,
+    fontSize:   10,
+    color:      colors.textMuted,
   },
 
-  // ── Macro target row ──
-  macroRow: {
-    flexDirection:  "row",
-    gap:            spacing.sm,
-    marginTop:      spacing.md,
-    marginBottom:   spacing.sm,
+  // ── Streak badge ──
+  streakBadge: {
+    flexDirection:   "row",
+    alignItems:      "center",
+    gap:             4,
+    backgroundColor: colors.bgSecondary,
+    borderRadius:    radius.pill,
+    paddingHorizontal: 10,
+    paddingVertical:   5,
+    borderWidth:     1.5,
+    borderColor:     colors.border,
   },
-  macroItem: {
-    flex:  1,
-    gap:   4,
-  },
-  macroLabel: {
-    fontFamily: fonts.body400,
-    fontSize:   11,
-    color:      colors.textMuted,
-    textTransform: "uppercase",
-    letterSpacing:  0.5,
-  },
-  macroBarBg: {
-    height:          6,
-    borderRadius:    3,
-    backgroundColor: colors.border,
-    overflow:        "hidden",
-  },
-  macroBarFill: {
-    height:       "100%",
-    borderRadius: 3,
-  },
-  macroValue: {
-    fontFamily: fonts.body400,
-    fontSize:   11,
+  streakCount: {
+    fontFamily: fonts.body700,
+    fontSize:   13,
     color:      colors.text,
-  },
-  macroUnit: {
-    color: colors.textMuted,
   },
 
   // ── Meals section ──
   mealsHeader: {
-    fontFamily:  fonts.heading700,
-    fontSize:    30,
-    color:       colors.text,
-    marginTop:   spacing.xl,
+    fontFamily: fonts.heading700,
+    fontSize:   28,
+    color:      colors.text,
+    marginTop:  spacing.lg,
   },
   mealsUnderline: {
     height:          1.5,
-    backgroundColor: colors.text,
+    backgroundColor: colors.border,
     marginTop:       4,
     marginBottom:    spacing.md,
   },
@@ -821,51 +807,186 @@ const styles = StyleSheet.create({
 
   // ── Meal row ──
   mealBlock: {
-    gap: 5,
-  },
-  mealBlockExpanded: {
-    backgroundColor: colors.bgSecondary,
+    backgroundColor: colors.bgCard,
     borderRadius:    radius.md,
-    borderWidth:     1.5,
+    borderWidth:     1,
     borderColor:     colors.border,
-    padding:         spacing.md,
-    marginHorizontal: -spacing.sm,
+    overflow:        "hidden",
     ...Platform.select({
       ios: {
         shadowColor:   colors.accentBorder,
-        shadowOffset:  { width: 0, height: 4 },
-        shadowOpacity: 0.18,
-        shadowRadius:  10,
+        shadowOffset:  { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius:  6,
       },
-      android: { elevation: 4 },
+      android: { elevation: 2 },
     }),
   },
-  // Full row is the expand toggle — no nested buttons
+  mealBlockExpanded: {
+    borderColor: colors.primaryBorder,
+  },
   mealHeaderRow: {
     flexDirection: "row",
     alignItems:    "center",
-    gap:           5,
+    padding:       spacing.sm,
+    gap:           spacing.sm,
   },
-  mealTypeText: {
-    fontFamily: fonts.heading600,
+  mealThumb: {
+    width:        60,
+    height:       60,
+    borderRadius: 10,
+    flexShrink:   0,
+  },
+  mealThumbPlaceholder: {
+    backgroundColor: colors.primaryLight,
+    alignItems:      "center",
+    justifyContent:  "center",
+  },
+  mealHeaderInfo: {
+    flex: 1,
+    gap:  4,
+  },
+  mealMetaRow: {
+    flexDirection: "row",
+    alignItems:    "center",
+    gap:           spacing.xs,
+    flexWrap:      "wrap",
+  },
+  mealTypeTag: {
+    backgroundColor:  colors.primaryLight,
+    borderRadius:     radius.pill,
+    paddingHorizontal: 8,
+    paddingVertical:   2,
+    alignSelf:        "flex-start",
+  },
+  mealTypeTagText: {
+    fontFamily:    fonts.body600,
+    fontSize:      10,
+    color:         colors.primary,
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
+  },
+  mealTimeRow: {
+    flexDirection: "row",
+    alignItems:    "center",
+    gap:           2,
+  },
+  mealTimeText: {
+    fontFamily: fonts.body400,
+    fontSize:   11,
+    color:      colors.textMuted,
+  },
+  mealNameText: {
+    fontFamily: fonts.body500,
+    fontSize:   13,
+    color:      colors.text,
+    fontStyle:  "italic",
+  },
+  mealCalWrapper: {
+    alignItems:  "flex-end",
+    gap:         4,
+    flexShrink:  0,
+    marginLeft:  spacing.sm,
+  },
+  mealCalRow: {
+    flexDirection: "row",
+    alignItems:    "baseline",
+    gap:           3,
+  },
+  mealCalValue: {
+    fontFamily: fonts.body700,
     fontSize:   18,
     color:      colors.text,
-    flexShrink: 0,
   },
-  dotLeader: {
-    flex:          1,
-    fontFamily:    fonts.body400,
-    fontSize:      13,
-    color:         colors.textLight,
-    overflow:      "hidden",
-    letterSpacing: 1,
-  },
-  mealCalText: {
-    fontFamily: fonts.heading600,
-    fontSize:   16,
+  mealCalUnit: {
+    fontFamily: fonts.body400,
+    fontSize:   11,
     color:      colors.textMuted,
+  },
+
+  // ── Expanded content ──
+  expandedContent: {
+    paddingHorizontal: spacing.md,
+    paddingBottom:     spacing.md,
+    gap:               spacing.md,
+  },
+  expandedDivider: {
+    height:          1,
+    backgroundColor: colors.border,
+    marginBottom:    spacing.xs,
+  },
+
+  // ── Macro bars ──
+  macroBarsSection: {
+    gap: 10,
+  },
+  macroBarRow: {
+    flexDirection: "row",
+    alignItems:    "center",
+    gap:           spacing.sm,
+  },
+  macroBarLabel: {
+    fontFamily: fonts.body500,
+    fontSize:   13,
+    color:      colors.text,
+    width:      56,
     flexShrink: 0,
   },
+  macroBarTrack: {
+    flex:            1,
+    height:          8,
+    borderRadius:    4,
+    backgroundColor: colors.primaryLight,
+    overflow:        "hidden",
+  },
+  macroBarFill: {
+    height:       "100%",
+    borderRadius: 4,
+  },
+  macroBarValue: {
+    fontFamily: fonts.body600,
+    fontSize:   13,
+    color:      colors.text,
+    width:      32,
+    textAlign:  "right",
+    flexShrink: 0,
+  },
+
+  // ── AI insight card ──
+  insightCard: {
+    flexDirection:   "row",
+    alignItems:      "flex-start",
+    gap:             spacing.sm,
+    backgroundColor: colors.primaryLight,
+    borderRadius:    radius.md,
+    borderWidth:     1,
+    borderColor:     colors.primaryBorder,
+    padding:         spacing.md,
+  },
+  insightText: {
+    flex:       1,
+    fontFamily: fonts.body400,
+    fontSize:   13,
+    color:      colors.text,
+    fontStyle:  "italic",
+    lineHeight: 20,
+  },
+
+  // ── Remove entry ──
+  removeEntryBtn: {
+    flexDirection:  "row",
+    alignItems:     "center",
+    justifyContent: "flex-end",
+    gap:            5,
+    paddingTop:     spacing.xs,
+  },
+  removeEntryText: {
+    fontFamily: fonts.body500,
+    fontSize:   13,
+    color:      colors.error,
+  },
+
+  // ── (kept for potential future use) ──
   actionBtn: {
     width:           30,
     height:          30,
@@ -875,186 +996,6 @@ const styles = StyleSheet.create({
     borderColor:     colors.border,
     alignItems:      "center",
     justifyContent:  "center",
-  },
-
-  // ── Expanded content wrapper ──
-  expandedContent: {
-    gap:       spacing.md,
-    marginTop: spacing.sm,
-  },
-
-  // ── Food item rows (individual edit + delete) ──
-  photoRow: {
-    flexDirection: "row",
-    alignItems:    "center",
-    paddingLeft:   spacing.sm,
-    gap:           8,
-  },
-  photoBullet: {
-    width:           4,
-    height:          4,
-    borderRadius:    2,
-    backgroundColor: colors.textLight,
-    flexShrink:      0,
-  },
-  photoName: {
-    fontFamily: fonts.heading400,
-    fontSize:   15,
-    color:      colors.textMuted,
-    flex:       1,
-  },
-  photoItemActions: {
-    flexDirection: "row",
-    alignItems:    "center",
-    gap:           4,
-    flexShrink:    0,
-  },
-
-  // ── Polaroid strip ──
-  polaroidScroll: {
-    paddingVertical: spacing.md,
-    gap:             spacing.md,
-    paddingHorizontal: 4, // room for shadow bleed
-  },
-  polaroid: {
-    backgroundColor: "#FFFDF8",
-    padding:         5,
-    paddingBottom:   22,
-    borderWidth:     1,
-    borderColor:     colors.border,
-    borderRadius:    2,
-    ...Platform.select({
-      ios: {
-        shadowColor:   "#4A4036",
-        shadowOffset:  { width: 1, height: 2 },
-        shadowOpacity: 0.18,
-        shadowRadius:  3,
-      },
-      android: { elevation: 3 },
-    }),
-  },
-  polaroidImg: {
-    width:  90,
-    height: 90,
-    borderRadius: 1,
-  },
-  polaroidPlaceholder: {
-    backgroundColor: colors.bgSecondary,
-    alignItems:      "center",
-    justifyContent:  "center",
-  },
-  polaroidCaption: {
-    position:   "absolute",
-    bottom:     4,
-    left:       4,
-    right:      4,
-    textAlign:  "center",
-    fontFamily: fonts.heading400,
-    fontSize:   10,
-    color:      colors.textMuted,
-  },
-
-  // ── Mood stickers ──
-  moodSection: {
-    gap: spacing.sm,
-  },
-  moodLabel: {
-    fontFamily:    fonts.body600,
-    fontSize:      12,
-    color:         colors.textMuted,
-    textTransform: "uppercase",
-    letterSpacing: 0.8,
-  },
-  moodGrid: {
-    flexDirection: "row",
-    flexWrap:      "wrap",
-    gap:           spacing.sm,
-  },
-  moodSticker: {
-    paddingHorizontal: 14,
-    paddingVertical:   7,
-    borderRadius:      radius.pill,
-    borderWidth:       1.5,
-    borderColor:       colors.border,
-    backgroundColor:   colors.bg,
-  },
-  moodStickerActive: {
-    backgroundColor: colors.pastelBlue,
-    borderColor:     colors.pastelBlueBorder,
-    ...Platform.select({
-      ios: {
-        shadowColor:   colors.pastelBlueBorder,
-        shadowOffset:  { width: 0, height: 2 },
-        shadowOpacity: 0.35,
-        shadowRadius:  0,
-      },
-      android: { elevation: 2 },
-    }),
-  },
-  moodStickerText: {
-    fontFamily: fonts.body500,
-    fontSize:   13,
-    color:      colors.textMuted,
-  },
-  moodStickerTextActive: {
-    color:      colors.text,
-    fontFamily: fonts.body600,
-  },
-
-  // ── Notes patch ──
-  notesPatch: {
-    backgroundColor: "#EDE5D8",
-    borderRadius:    radius.sm,
-    borderWidth:     1,
-    borderColor:     "#CFC4B0",
-    padding:         spacing.md,
-    paddingTop:      spacing.lg,  // extra room for tape
-    marginTop:       spacing.sm,
-    gap:             spacing.sm,
-    position:        "relative",
-    overflow:        "visible",
-  },
-  // Tape strips — absolutely positioned at the top
-  tapeLeft: {
-    position:        "absolute",
-    top:             -8,
-    left:            20,
-    width:           38,
-    height:          16,
-    borderRadius:    2,
-    backgroundColor: "rgba(255, 253, 248, 0.78)",
-    borderWidth:     0.5,
-    borderColor:     "rgba(200, 185, 165, 0.45)",
-    transform:       [{ rotate: "-4deg" }],
-  },
-  tapeRight: {
-    position:        "absolute",
-    top:             -7,
-    right:           24,
-    width:           38,
-    height:          16,
-    borderRadius:    2,
-    backgroundColor: "rgba(255, 253, 248, 0.78)",
-    borderWidth:     0.5,
-    borderColor:     "rgba(200, 185, 165, 0.45)",
-    transform:       [{ rotate: "3deg" }],
-  },
-  notesHeader: {
-    flexDirection:  "row",
-    justifyContent: "space-between",
-    alignItems:     "center",
-  },
-  notesLabel: {
-    fontFamily:    fonts.body600,
-    fontSize:      12,
-    color:         "#8C7B6A",
-    textTransform: "uppercase",
-    letterSpacing: 0.8,
-  },
-  notesSave: {
-    fontFamily: fonts.body600,
-    fontSize:   12,
-    color:      colors.accentDark,
   },
   notesInput: {
     fontFamily: fonts.heading400,
@@ -1083,20 +1024,18 @@ const styles = StyleSheet.create({
     position:        "absolute",
     bottom:          Platform.OS === "ios" ? 36 : 20,
     right:           spacing.xl,
-    width:           58,
-    height:          58,
-    borderRadius:    29,
-    backgroundColor: colors.softPink,
-    borderWidth:     2,
-    borderColor:     colors.softPinkBorder,
+    width:           56,
+    height:          56,
+    borderRadius:    28,
+    backgroundColor: colors.primary,
     alignItems:      "center",
     justifyContent:  "center",
     ...Platform.select({
       ios: {
-        shadowColor:   colors.softPinkBorder,
+        shadowColor:   colors.primary,
         shadowOffset:  { width: 0, height: 4 },
-        shadowOpacity: 0.45,
-        shadowRadius:  0,
+        shadowOpacity: 0.4,
+        shadowRadius:  8,
       },
       android: { elevation: 6 },
     }),
