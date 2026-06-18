@@ -44,11 +44,7 @@ export default function RecipesScreen() {
           {/* ── Header ── */}
           <View style={styles.headerRow}>
             <View>
-              <Text style={styles.eyebrow}>AI-MATCHED RECIPES</Text>
               <Text style={styles.heading}>Recipe Planner</Text>
-            </View>
-            <View style={styles.headerIcon}>
-              <Ionicons name="restaurant-outline" size={22} color={colors.primary} />
             </View>
           </View>
 

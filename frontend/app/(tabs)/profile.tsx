@@ -198,7 +198,6 @@ export default function ProfileScreen() {
             </View>
             <View style={styles.profileInfo}>
               <Text style={styles.profileName}>{profile?.name ?? "Your Profile"}</Text>
-              <Text style={styles.profileSubtitle}>AI Nutrition Profile</Text>
               <Text style={styles.profileEmail}>{profile?.email}</Text>
             </View>
           </View>
@@ -264,10 +263,6 @@ export default function ProfileScreen() {
               <View style={styles.cardHeaderLeft}>
                 <Text style={styles.cardEyebrow}>NUTRITION TARGET</Text>
                 <Text style={styles.cardTitle}>Daily Goal</Text>
-              </View>
-              <View style={styles.aiSuggestedBadge}>
-                <Ionicons name="sparkles-outline" size={11} color={colors.primary} />
-                <Text style={styles.aiSuggestedText}>AI suggested</Text>
               </View>
             </View>
 
