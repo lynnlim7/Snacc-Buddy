@@ -37,7 +37,7 @@ import {
 } from "../../stores/diaryStore";
 import { useOnboardingStore } from "../../stores/onboardingStore";
 import { useUserStore } from "../../stores/userStore";
-import { computeCalorieGoal } from "../../utils/nutrition";
+import { computeCalorieGoal, computeNutritionTargets } from "../../utils/nutrition";
 import { colors, fonts, spacing, radius } from "../../constants/theme";
 
 // ─── Constants ────────────────────────────────────────────────
@@ -344,6 +344,38 @@ function CalorieCard({ total, goal, isToday }: { total: number; goal: number; is
   );
 }
 
+// ─── Macro target row ────────────────────────────────────────
+
+function MacroTargetRow({
+  protein, carbs, fat,
+  proteinTarget, carbsTarget, fatTarget,
+}: {
+  protein: number; carbs: number; fat: number;
+  proteinTarget: number; carbsTarget: number; fatTarget: number;
+}) {
+  const items = [
+    { label: "Protein", value: Math.round(protein), target: proteinTarget, color: "#E8A598" },
+    { label: "Carbs",   value: Math.round(carbs),   target: carbsTarget,   color: "#A8C5DA" },
+    { label: "Fat",     value: Math.round(fat),      target: fatTarget,     color: "#C5B8E8" },
+  ];
+  return (
+    <View style={styles.macroRow}>
+      {items.map(({ label, value, target, color }) => {
+        const pct = target > 0 ? Math.min(1, value / target) : 0;
+        return (
+          <View key={label} style={styles.macroItem}>
+            <Text style={styles.macroLabel}>{label}</Text>
+            <View style={styles.macroBarBg}>
+              <View style={[styles.macroBarFill, { width: `${Math.round(pct * 100)}%` as any, backgroundColor: color }]} />
+            </View>
+            <Text style={styles.macroValue}>{value}<Text style={styles.macroUnit}>g</Text> / {target}g</Text>
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
 // ─── Main screen ─────────────────────────────────────────────
 
 export default function DiaryScreen() {
@@ -352,6 +384,7 @@ export default function DiaryScreen() {
   const [editPrefill,     setEditPrefill]     = useState<MealType | undefined>(undefined);
   const [editingPhoto,    setEditingPhoto]    = useState<{ mealId: string; photoId: string } | null>(null);
   const [dailyCalories,   setDailyCalories]   = useState(0);
+  const [dailyMacros,     setDailyMacros]     = useState({ protein: 0, carbs: 0, fat: 0 });
   const [refreshing,      setRefreshing]      = useState(false);
 
   // Reactive store selectors
@@ -375,12 +408,16 @@ export default function DiaryScreen() {
   useEffect(() => {
     loadLogsFromBackend(selectedDate);
     foodApi.getDailySummary(selectedDate)
-      .then((s) => setDailyCalories(s.total_calories))
+      .then((s) => {
+        setDailyCalories(s.total_calories);
+        setDailyMacros({ protein: s.total_protein_g, carbs: s.total_carbs_g, fat: s.total_fat_g });
+      })
       .catch(() => {});
   }, [selectedDate]);
 
-  const isToday     = selectedDate === todayKey();
-  const greeting    = getGreeting();
+  const isToday        = selectedDate === todayKey();
+  const greeting       = getGreeting();
+  const targets        = computeNutritionTargets(profile);
   const displayName = (profile?.name ?? userName).trim() || "My";
   const initial     = displayName !== "My" ? displayName[0].toUpperCase() : "?";
 
@@ -523,6 +560,16 @@ export default function DiaryScreen() {
 
           {/* ── Calorie card ── */}
           <CalorieCard total={dailyCalories} goal={calorieGoal} isToday={isToday} />
+
+          {/* ── Macro targets ── */}
+          <MacroTargetRow
+            protein={dailyMacros.protein}
+            carbs={dailyMacros.carbs}
+            fat={dailyMacros.fat}
+            proteinTarget={targets.protein_g}
+            carbsTarget={targets.carbs_g}
+            fatTarget={targets.fat_g}
+          />
 
           {/* ── Meals section ── */}
           <Text style={styles.mealsHeader}>Meals</Text>
@@ -716,6 +763,43 @@ const styles = StyleSheet.create({
     fontSize:   12,
     color:      colors.text,
     opacity:    0.6,
+  },
+
+  // ── Macro target row ──
+  macroRow: {
+    flexDirection:  "row",
+    gap:            spacing.sm,
+    marginTop:      spacing.md,
+    marginBottom:   spacing.sm,
+  },
+  macroItem: {
+    flex:  1,
+    gap:   4,
+  },
+  macroLabel: {
+    fontFamily: fonts.body400,
+    fontSize:   11,
+    color:      colors.textMuted,
+    textTransform: "uppercase",
+    letterSpacing:  0.5,
+  },
+  macroBarBg: {
+    height:          6,
+    borderRadius:    3,
+    backgroundColor: colors.border,
+    overflow:        "hidden",
+  },
+  macroBarFill: {
+    height:       "100%",
+    borderRadius: 3,
+  },
+  macroValue: {
+    fontFamily: fonts.body400,
+    fontSize:   11,
+    color:      colors.text,
+  },
+  macroUnit: {
+    color: colors.textMuted,
   },
 
   // ── Meals section ──

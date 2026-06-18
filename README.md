@@ -50,7 +50,7 @@ A food calorie tracking app that uses Google Gemini AI to analyse photos of meal
 | Backend | FastAPI + Python 3.10+ |
 | Database | PostgreSQL 16 |
 | Cache / rate-limit | Redis 7 |
-| AI | Google Gemini (`gemini-2.0-flash`) |
+| AI | Google Gemini (`gemini-2.5-flash`) |
 | Auth | fastapi-users (JWT + bcrypt) |
 | ORM | SQLAlchemy 2 async + asyncpg |
 | Migrations | Alembic |

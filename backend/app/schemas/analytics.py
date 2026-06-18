@@ -14,3 +14,15 @@ class DailySummaryResponse(BaseModel):
 
 class WeeklySummaryResponse(BaseModel):
     week: list[DailySummaryResponse]
+
+
+class NutritionTargetsResponse(BaseModel):
+    """Daily nutrition targets derived from the user's profile.
+
+    Computed on-the-fly using Mifflin-St Jeor BMR + activity multiplier +
+    goal adjustment. Macro split: Protein 30% · Carbs 40% · Fat 30%.
+    """
+    calorie_target: int
+    protein_target_g: float
+    carbs_target_g: float
+    fat_target_g: float

@@ -56,13 +56,19 @@ async def analyze_food_image(
             detail="Unsupported file type. Allowed: jpeg, png, webp.",
         )
 
-    image_bytes = await image.read()
-
-    if len(image_bytes) > settings.MAX_IMAGE_SIZE_MB * 1024 * 1024:
-        raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail=f"Image exceeds {settings.MAX_IMAGE_SIZE_MB} MB limit.",
-        )
+    # Read in chunks so the size limit fires before the full upload lands in memory.
+    max_bytes = settings.MAX_IMAGE_SIZE_MB * 1024 * 1024
+    chunks: list[bytes] = []
+    total = 0
+    async for chunk in image:
+        total += len(chunk)
+        if total > max_bytes:
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail=f"Image exceeds {settings.MAX_IMAGE_SIZE_MB} MB limit.",
+            )
+        chunks.append(chunk)
+    image_bytes = b"".join(chunks)
 
     # Resolve default model and active prompt from governance registry
     model_repo = ModelRegistryRepository(db)

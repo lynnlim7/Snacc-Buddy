@@ -13,7 +13,7 @@ import { useFocusEffect } from "expo-router";
 import { PaperBackground } from "../../components/PaperBackground";
 import { useFoodStore } from "../../stores/foodStore";
 import { useUserStore } from "../../stores/userStore";
-import { computeCalorieGoal } from "../../utils/nutrition";
+import { computeCalorieGoal, computeBMI } from "../../utils/nutrition";
 import { DailySummary } from "../../types/food";
 import { colors, fonts, spacing, radius } from "../../constants/theme";
 
@@ -80,6 +80,9 @@ export default function AnalyticsScreen() {
     useFoodStore();
   const profile     = useUserStore((s) => s.profile);
   const calorieGoal = computeCalorieGoal(profile);
+  const bmi = profile?.current_weight_kg && profile?.height_cm
+    ? computeBMI(profile.current_weight_kg, profile.height_cm)
+    : null;
 
   useFocusEffect(
     useCallback(() => {
@@ -109,6 +112,27 @@ export default function AnalyticsScreen() {
           contentContainerStyle={styles.scroll}
           showsVerticalScrollIndicator={false}
         >
+          {/* ── BMI card ── */}
+          {bmi && (
+            <>
+              <Text style={styles.sectionHeading}>Your BMI</Text>
+              <View style={styles.sectionUnderline} />
+              <View style={styles.bmiCard}>
+                <Text style={styles.bmiValue}>{bmi.value}</Text>
+                <View style={styles.bmiMeta}>
+                  <Text style={styles.bmiCategory}>{bmi.category}</Text>
+                  <Text style={styles.bmiGoalCaption}>
+                    {bmi.calorieAdjustment === 0
+                      ? "Calorie target: maintenance"
+                      : bmi.calorieAdjustment > 0
+                        ? `Calorie target: +${bmi.calorieAdjustment} kcal surplus`
+                        : `Calorie target: ${bmi.calorieAdjustment} kcal deficit`}
+                  </Text>
+                </View>
+              </View>
+            </>
+          )}
+
           {/* ── Today card — matches diary CalorieCard ── */}
           {dailySummary && (
             <>
@@ -393,6 +417,46 @@ const styles = StyleSheet.create({
     color:      colors.accentBorder,
     marginLeft: 4,
     lineHeight: 12,
+  },
+
+  // ── BMI card ──
+  bmiCard: {
+    backgroundColor: colors.bgSecondary,
+    borderRadius:    radius.lg,
+    borderWidth:     1.5,
+    borderColor:     colors.border,
+    padding:         spacing.md,
+    flexDirection:   "row",
+    alignItems:      "center",
+    gap:             spacing.md,
+    ...Platform.select({
+      ios:     { shadowColor: colors.accentBorder, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.12, shadowRadius: 6 },
+      android: { elevation: 2 },
+    }),
+  },
+  bmiValue: {
+    fontFamily:    fonts.heading700,
+    fontSize:      52,
+    color:         colors.text,
+    lineHeight:    56,
+    letterSpacing: -1,
+    flexShrink:    0,
+  },
+  bmiMeta: {
+    flex: 1,
+    gap:  spacing.xs,
+  },
+  bmiCategory: {
+    fontFamily: fonts.heading600,
+    fontSize:   20,
+    color:      colors.text,
+    lineHeight: 24,
+  },
+  bmiGoalCaption: {
+    fontFamily: fonts.body400,
+    fontSize:   12,
+    color:      colors.textMuted,
+    lineHeight: 17,
   },
 
   // ── Empty state ──
