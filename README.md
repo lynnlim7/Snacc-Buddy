@@ -118,65 +118,15 @@ git clone https://github.com/lynnlim7/Snacc-Buddy.git
 cd Snacc-Buddy
 ```
 
-### 2. Generate secure secrets
-
-Run each command and copy the output into the corresponding variable in your `.env` file:
+### 2. Create the backend environment file
 
 ```bash
-# JWT_SECRET
-python3 -c "import secrets; print(secrets.token_hex(32))"
-
-# RESET_PASSWORD_TOKEN_SECRET
-python3 -c "import secrets; print(secrets.token_hex(32))"
-
-# VERIFICATION_TOKEN_SECRET
-python3 -c "import secrets; print(secrets.token_hex(32))"
-
-# POSTGRES_PASSWORD (or choose your own strong password)
-python3 -c "import secrets; print(secrets.token_urlsafe(24))"
+cp backend/.env.example backend/.env
 ```
 
-### 3. Create the backend environment file
+Open `backend/.env` and fill in the placeholder values. Every key is documented inside the file.
 
-Create `backend/.env` and fill in every value:
-
-```env
-# ── Gemini AI ─────────────────────────────────────────────────────────
-GEMINI_API_KEY=<your-google-ai-studio-api-key>
-GEMINI_MODEL=gemini-2.0-flash
-GEMINI_TEMPERATURE=0.2
-GEMINI_TIMEOUT_SECONDS=30
-
-# ── Database (Docker service name "db" is the hostname inside compose) ─
-DATABASE_URL=postgresql+asyncpg://<db-user>:<db-password>@db:5432/<db-name>
-POSTGRES_USER=<db-user>
-POSTGRES_PASSWORD=<db-password>
-POSTGRES_DB=<db-name>
-
-# ── Security (use the generated values from step 2) ───────────────────
-JWT_SECRET=<generated-64-char-hex>
-RESET_PASSWORD_TOKEN_SECRET=<generated-64-char-hex>
-VERIFICATION_TOKEN_SECRET=<generated-64-char-hex>
-
-# ── Email ─────────────────────────────────────────────────────────────
-MAIL_USERNAME=<your-email@example.com>
-MAIL_PASSWORD=<your-smtp-password-or-app-password>
-MAIL_FROM=<your-email@example.com>
-MAIL_PORT=587
-MAIL_SERVER=smtp.gmail.com
-MAIL_FROM_NAME=Snacc Buddy
-MAIL_STARTTLS=true
-MAIL_SSL_TLS=false
-
-# ── App ───────────────────────────────────────────────────────────────
-CORS_ORIGINS=["http://localhost:8081","exp://localhost:8081"]
-MAX_IMAGE_SIZE_MB=10
-FRONTEND_RESET_PASSWORD_URL=http://localhost:8081/reset-password
-```
-
-> **Gmail tip**: Create an [App Password](https://support.google.com/accounts/answer/185833) instead of using your main Gmail password. Go to Google Account → Security → 2-Step Verification → App Passwords.
-
-### 4. Build and start all services
+### 3. Build and start all services
 
 ```bash
 docker compose up --build
@@ -186,7 +136,7 @@ This starts PostgreSQL on port `5434`, Redis on port `6379`, the FastAPI backend
 
 Wait for the log line `Application startup complete.` from the `api` container before opening the browser.
 
-### 5. Open the app
+### 4. Open the app
 
 ```
 http://localhost:8081
@@ -249,32 +199,11 @@ Verify the install:
 
 ### 5. Apply database migrations
 
-The migration chain has multiple heads that must be applied separately. Run all commands from inside `backend/`:
-
 ```bash
-# Step 1: core food_logs table
-.venv/bin/alembic upgrade 2f8a45c69b31
-
-# Step 2: user profile fields + AI governance tables
-.venv/bin/alembic upgrade bc07eafa8785
+cd backend
+DATABASE_URL="postgresql+asyncpg://<db-user>:<db-password>@localhost:5434/<db-name>" \
+  .venv/bin/alembic upgrade head
 ```
-
-Then apply the mood column and stamp the remaining heads directly (the `a1b2c3d4e5f6` migration cannot run via Alembic due to an enum-creation bug in SQLAlchemy + asyncpg):
-
-```bash
-# Add mood column to food_logs
-docker exec snacc-buddy-db-1 psql -U <db-user> -d <db-name> \
-  -c "ALTER TABLE food_logs ADD COLUMN IF NOT EXISTS mood JSONB NOT NULL DEFAULT '[]'::jsonb;"
-
-# Stamp all migration heads so Alembic knows they are applied
-docker exec snacc-buddy-db-1 psql -U <db-user> -d <db-name> -c "
-  INSERT INTO alembic_version (version_num) VALUES ('a1b2c3d4e5f6') ON CONFLICT DO NOTHING;
-  INSERT INTO alembic_version (version_num) VALUES ('2f8a45c69b31') ON CONFLICT DO NOTHING;
-  INSERT INTO alembic_version (version_num) VALUES ('99447c563d39') ON CONFLICT DO NOTHING;
-"
-```
-
-> **Why the workaround?** Migration `a1b2c3d4e5f6` creates PostgreSQL enum types inside `op.create_table()`, which triggers a SQLAlchemy/asyncpg double-creation error even when `create_type=False` is set. The governance tables are applied via `alembic upgrade bc07eafa8785`, then the mood column is patched in directly.
 
 ### 6. Start the backend
 
@@ -402,87 +331,6 @@ Interactive docs (Swagger UI): `http://localhost:8000/docs`
 | `POST` | `/api/v1/governance/prompts` | Create a new prompt version |
 | `GET` | `/api/v1/governance/inference-logs` | Browse inference audit records |
 | `GET` | `/api/v1/governance/dashboard` | Aggregated governance metrics |
-
----
-
-## Environment Variables Reference
-
-All variables are read from `backend/.env`.
-
-| Variable | Required | Default | Description |
-|---|---|---|---|
-| `GEMINI_API_KEY` | Yes | — | Google AI Studio API key |
-| `GEMINI_MODEL` | No | `gemini-2.0-flash` | Gemini model identifier |
-| `GEMINI_TEMPERATURE` | No | `0.2` | Generation temperature (0–1) |
-| `GEMINI_TIMEOUT_SECONDS` | No | `30` | Per-request timeout |
-| `DATABASE_URL` | Yes | — | asyncpg connection string |
-| `POSTGRES_USER` | Yes | — | PostgreSQL username (used by Docker container) |
-| `POSTGRES_PASSWORD` | Yes | — | PostgreSQL password (used by Docker container) |
-| `POSTGRES_DB` | Yes | — | PostgreSQL database name |
-| `REDIS_URL` | No | `redis://localhost:6379` | Redis connection string |
-| `GEMINI_CACHE_TTL_SECONDS` | No | `86400` | How long to cache identical image analyses (24 h) |
-| `GEMINI_DEDUP_TTL_SECONDS` | No | `60` | Dedup lock TTL for concurrent identical requests |
-| `AI_RATE_LIMIT_REQUESTS` | No | `10` | Max AI requests per user per window |
-| `AI_RATE_LIMIT_WINDOW_SECONDS` | No | `3600` | Rate limit window duration |
-| `JWT_SECRET` | Yes | — | Secret for signing JWTs — must not be the default in production |
-| `JWT_LIFETIME_SECONDS` | No | `3600` | Token expiry |
-| `RESET_PASSWORD_TOKEN_SECRET` | Yes | — | Secret for password reset tokens |
-| `VERIFICATION_TOKEN_SECRET` | Yes | — | Secret for email verification tokens |
-| `CORS_ORIGINS` | No | `["http://localhost:8081"]` | Allowed frontend origins (JSON array) |
-| `MAX_IMAGE_SIZE_MB` | No | `10` | Upload size limit |
-| `MAIL_USERNAME` | Yes | — | SMTP username |
-| `MAIL_PASSWORD` | Yes | — | SMTP password or app password |
-| `MAIL_FROM` | Yes | — | Sender address |
-| `MAIL_PORT` | No | `587` | SMTP port |
-| `MAIL_SERVER` | Yes | — | SMTP hostname |
-| `MAIL_SUPPRESS_SEND` | No | — | Set to `1` to skip all email sending (development only) |
-| `ENV` | No | `development` | Set to `production` to enforce secret validation on startup |
-
----
-
-## Common Issues
-
-### Backend fails to start: `JWT_SECRET must not be the default value`
-
-You are running with `ENV=production` and a placeholder secret. Either set `ENV=development` in your `.env` or replace all secrets with securely generated values (see the `python3 -c "import secrets..."` commands above).
-
-### `ModuleNotFoundError: No module named 'app'`
-
-You ran `uv` or `pytest` from the repo root instead of inside `backend/`. Always `cd backend` first.
-
-### Registration returns 500 / SMTP error in development
-
-Add `MAIL_SUPPRESS_SEND=1` to your environment or `.env` to skip email sending, or supply real SMTP credentials.
-
-### `UndefinedColumnError: column food_logs.mood`
-
-Migration `99447c563d39` was not applied. Run the `ALTER TABLE` psql command in step 5 of Local Development Setup.
-
-### `uv sync` says "Audited N packages" but imports fail
-
-The `.venv` directory is broken. Delete it and reinstall:
-
-```bash
-cd backend
-rm -rf .venv
-uv venv
-uv sync --reinstall
-```
-
-### `ImportError: The version of cryptography does not match the loaded shared object`
-
-Same fix as above — delete `.venv` and reinstall.
-
-### Port 5434 already in use
-
-Change the host port in `docker-compose.yml`:
-
-```yaml
-ports:
-  - "5435:5432"   # use any free port
-```
-
-Then update `DATABASE_URL` in your `.env` to use the new port.
 
 ---
 
