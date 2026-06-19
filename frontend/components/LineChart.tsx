@@ -2,7 +2,7 @@
  * LineChart — lightweight area line chart with a goal dashed line.
  * Uses inline SVG on web. Falls back to the existing bar chart on native.
  */
-import React from "react";
+import React, { useState } from "react";
 import { Platform, StyleSheet, Text, View } from "react-native";
 import { colors, fonts, spacing } from "../constants/theme";
 
@@ -19,6 +19,7 @@ interface LineChartProps {
   lineColor?:  string;
   goalColor?:  string;
   fillColor?:  string;
+  unit?:       string;   // shown in the hover tooltip, e.g. "kcal"
 }
 
 const PAD_L = 36;   // left  — y-axis labels
@@ -31,10 +32,13 @@ export function LineChart({
   goal,
   width,
   height = 180,
-  lineColor  = "#9B5468",
-  goalColor  = "#C49AA8",
-  fillColor  = "rgba(155, 84, 104, 0.12)",
+  lineColor  = "#7C0116",
+  goalColor  = "#E0A4B0",
+  fillColor  = "rgba(124, 1, 22, 0.10)",
+  unit       = "",
 }: LineChartProps) {
+  const [hoverIdx, setHoverIdx] = useState<number | null>(null);
+
   if (data.length === 0) return null;
 
   const chartW = width - PAD_L - PAD_R;
@@ -79,7 +83,11 @@ export function LineChart({
     <View style={{ width, height }}>
       {(React as any).createElement(
         "svg",
-        { width, height, viewBox: `0 0 ${width} ${height}`, style: { display: "block" } },
+        {
+          width, height, viewBox: `0 0 ${width} ${height}`,
+          style: { display: "block", overflow: "visible" },
+          onMouseLeave: () => setHoverIdx(null),
+        },
 
         // Grid lines + y-axis labels
         ...gridYs.map((gv) =>
@@ -88,7 +96,7 @@ export function LineChart({
             { key: `grid-${gv}` },
             (React as any).createElement("line", {
               x1: PAD_L, y1: toY(gv), x2: PAD_L + chartW, y2: toY(gv),
-              stroke: "#E8DDD2", strokeWidth: 1,
+              stroke: "#F0D9E0", strokeWidth: 1,
             }),
             (React as any).createElement(
               "text",
@@ -96,7 +104,7 @@ export function LineChart({
                 x: PAD_L - 4, y: toY(gv) + 4,
                 textAnchor: "end",
                 fontSize: 9,
-                fill: "#9B8578",
+                fill: "#8A4A56",
                 fontFamily: "sans-serif",
               },
               gv >= 1000 ? `${Math.round(gv / 100) / 10}k` : String(gv)
@@ -130,12 +138,14 @@ export function LineChart({
           strokeLinecap: "round",
         }),
 
-        // Dots on each data point
+        // Dots on each data point (hovered one is enlarged)
         ...points.map((p, i) =>
           (React as any).createElement("circle", {
             key: `dot-${i}`,
-            cx: p.x, cy: p.y, r: 3,
+            cx: p.x, cy: p.y, r: hoverIdx === i ? 5 : 3,
             fill: lineColor,
+            stroke: hoverIdx === i ? "#FFFFFF" : "none",
+            strokeWidth: hoverIdx === i ? 2 : 0,
           })
         ),
 
@@ -148,12 +158,56 @@ export function LineChart({
               x: toX(i), y: height - 8,
               textAnchor: "middle",
               fontSize: 10,
-              fill: "#9B8578",
+              fill: "#8A4A56",
               fontFamily: "sans-serif",
             },
             d.label
           )
-        )
+        ),
+
+        // Hover hit areas — one vertical band per data point
+        ...data.map((d, i) => {
+          const bandW = chartW / data.length;
+          return (React as any).createElement("rect", {
+            key: `hit-${i}`,
+            x: toX(i) - bandW / 2,
+            y: PAD_T,
+            width: bandW,
+            height: chartH,
+            fill: "transparent",
+            style: { cursor: "pointer" },
+            onMouseEnter: () => setHoverIdx(i),
+          });
+        }),
+
+        // Tooltip for the hovered point
+        hoverIdx !== null && (() => {
+          const p   = points[hoverIdx];
+          const d   = data[hoverIdx];
+          const label = `${Math.round(d.value).toLocaleString()}${unit ? " " + unit : ""}`;
+          const boxW  = Math.max(54, label.length * 7 + 16);
+          const boxH  = 26;
+          const tx    = Math.min(Math.max(p.x - boxW / 2, 0), width - boxW);
+          const ty    = Math.max(p.y - boxH - 8, 0);
+          return (React as any).createElement(
+            "g",
+            { key: "tooltip", style: { pointerEvents: "none" } },
+            (React as any).createElement("rect", {
+              x: tx, y: ty, width: boxW, height: boxH,
+              rx: 8, fill: "#FFFFFF", stroke: "#F0D9E0", strokeWidth: 1,
+            }),
+            (React as any).createElement(
+              "text",
+              {
+                x: tx + boxW / 2, y: ty + 17,
+                textAnchor: "middle", fontSize: 12,
+                fontWeight: "700", fill: lineColor,
+                fontFamily: "sans-serif",
+              },
+              label
+            )
+          );
+        })()
       )}
     </View>
   );

@@ -600,7 +600,7 @@ function ChatStep({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: "rgba(74, 64, 54, 0.4)",
+    backgroundColor: "rgba(71, 19, 28, 0.45)",
     justifyContent: "flex-end",
   },
   kavWrap: { justifyContent: "flex-end" },

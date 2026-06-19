@@ -80,7 +80,7 @@ function GrainOverlay() {
             width: d.size,
             height: d.size,
             borderRadius: d.size,
-            backgroundColor: "#4A4036",
+            backgroundColor: "#47131C",
             opacity: d.opacity,
           }}
         />

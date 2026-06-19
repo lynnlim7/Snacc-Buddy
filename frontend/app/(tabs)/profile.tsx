@@ -55,12 +55,9 @@ const GOAL_MODES = [
   { value: "gain_muscle",  label: "Gain muscle",    icon: "trending-up-outline" },
 ];
 
-// BMI category → colour mapping
-function bmiColor(category: string): string {
-  if (category.toLowerCase().includes("underweight")) return "#A8C5DA";
-  if (category.toLowerCase().includes("normal"))      return "#C8D5B9";
-  if (category.toLowerCase().includes("overweight"))  return "#E8B98A";
-  return "#D97B78"; // obese
+// BMI category badge — wine brand colour across all categories (monochrome, per Figma)
+function bmiColor(_category: string): string {
+  return "#7C0116";
 }
 
 // ─── Sub-components ───────────────────────────────────────────
@@ -236,13 +233,12 @@ export default function ProfileScreen() {
                   </View>
                 </View>
 
-                {/* Scale bar */}
+                {/* Scale bar — light→dark wine gradient zones */}
                 <View style={styles.bmiScaleTrack}>
-                  {/* Coloured zones */}
-                  <View style={[styles.bmiZone, { flex: 23, backgroundColor: "#A8C5DA33" }]} />
-                  <View style={[styles.bmiZone, { flex: 25, backgroundColor: "#C8D5B933" }]} />
-                  <View style={[styles.bmiZone, { flex: 25, backgroundColor: "#E8B98A33" }]} />
-                  <View style={[styles.bmiZone, { flex: 27, backgroundColor: "#D97B7833" }]} />
+                  <View style={[styles.bmiZone, { flex: 23, backgroundColor: "#F7D8E1" }]} />
+                  <View style={[styles.bmiZone, { flex: 25, backgroundColor: "#E0A4B0" }]} />
+                  <View style={[styles.bmiZone, { flex: 25, backgroundColor: "#C16B7C" }]} />
+                  <View style={[styles.bmiZone, { flex: 27, backgroundColor: "#7C0116" }]} />
                   {/* Thumb */}
                   <View style={[styles.bmiThumb, { left: `${bmiBarPct}%` as any }]} />
                 </View>
@@ -274,9 +270,9 @@ export default function ProfileScreen() {
             {/* Macro breakdown */}
             <View style={styles.macroBreakdown}>
               {[
-                { label: "Protein", value: Math.round(targets.protein_g), color: colors.primary },
-                { label: "Carbs",   value: Math.round(targets.carbs_g),   color: "#A8C5DA" },
-                { label: "Fat",     value: Math.round(targets.fat_g),      color: "#C5B8E8" },
+                { label: "Protein", value: Math.round(targets.protein_g), color: "#7C0116" },
+                { label: "Carbs",   value: Math.round(targets.carbs_g),   color: "#E0A4B0" },
+                { label: "Fat",     value: Math.round(targets.fat_g),      color: "#B85C6E" },
               ].map(({ label, value, color }) => (
                 <View key={label} style={styles.macroBreakdownItem}>
                   <View style={[styles.macroBreakdownDot, { backgroundColor: color }]} />

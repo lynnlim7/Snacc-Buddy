@@ -32,9 +32,9 @@ const SEGMENTS: Segment[] = ["Calories", "Weight", "Macros"];
 
 // Macro colour palette — consistent with the rest of the app
 const MACRO_COLORS = {
-  protein: "#9B5468",  // mauve rose
-  carbs:   "#A8C5DA",  // pastel blue
-  fat:     "#C5B8E8",  // lavender
+  protein: "#7C0116",  // Cherry Cola wine
+  carbs:   "#E0A4B0",  // Hibiscus Tonic mauve
+  fat:     "#B85C6E",  // mid rose
 };
 
 // ─── Grouped macro bar chart ──────────────────────────────────
@@ -142,14 +142,14 @@ function MacroBarChart({ data, width }: { data: MacroBarDay[]; width: number }) 
             { key: `grid-${gv}` },
             (React as any).createElement("line", {
               x1: PAD_L, y1: toY(gv), x2: PAD_L + chartW, y2: toY(gv),
-              stroke: "#E8DDD2", strokeWidth: 1,
+              stroke: "#F0D9E0", strokeWidth: 1,
             }),
             (React as any).createElement(
               "text",
               {
                 x: PAD_L - 4, y: toY(gv) + 4,
                 textAnchor: "end", fontSize: 9,
-                fill: "#9B8578", fontFamily: "sans-serif",
+                fill: "#8A4A56", fontFamily: "sans-serif",
               },
               String(gv)
             )
@@ -201,7 +201,7 @@ function MacroBarChart({ data, width }: { data: MacroBarDay[]; width: number }) 
                 x: groupX + (barW * 3) / 2,
                 y: height - 8,
                 textAnchor: "middle", fontSize: 10,
-                fill: "#9B8578", fontFamily: "sans-serif",
+                fill: "#8A4A56", fontFamily: "sans-serif",
               },
               d.label
             )
@@ -232,7 +232,7 @@ function MacroBarChart({ data, width }: { data: MacroBarDay[]; width: number }) 
               x: tx, y: ty,
               width: 110, height: lines.length * 18 + 12,
               rx: 8, fill: "#FFFFFF",
-              stroke: "#E8DDD2", strokeWidth: 1,
+              stroke: "#F0D9E0", strokeWidth: 1,
             }),
             // Lines
             ...lines.map(({ label, color, bold }, li) =>
@@ -329,16 +329,18 @@ export default function AnalyticsScreen() {
 
   // ── Derived stats ──
   const week        = weeklySummary?.week ?? [];
-  const activeDays  = week.filter((d) => d.total_calories > 0).length;
+  // A day counts as "logged" when the user recorded at least one meal that day.
+  const isLogged    = (d: { meal_count?: number; total_calories: number }) =>
+    (d.meal_count ?? 0) > 0 || d.total_calories > 0;
+  const activeDays  = week.filter(isLogged).length;
   const avgCalories = activeDays > 0
     ? Math.round(week.reduce((s, d) => s + d.total_calories, 0) / activeDays)
     : 0;
   const avgProtein  = activeDays > 0
     ? Math.round(week.reduce((s, d) => s + d.total_protein_g, 0) / activeDays)
     : 0;
-  const daysOnTrack = week.filter(
-    (d) => d.total_calories > 0 && Math.abs(d.total_calories - calorieGoal) / calorieGoal <= 0.15
-  ).length;
+  // Days on track = days the user logged their meals.
+  const daysOnTrack = activeDays;
 
   // ── Chart data ──
   const chartDataCalories: ChartDataPoint[] = week.map((d) => ({
@@ -430,6 +432,7 @@ export default function AnalyticsScreen() {
                           data={chartDataCalories}
                           goal={calorieGoal}
                           width={CHART_WIDTH}
+                          unit="kcal"
                         />
                       </>
                     )}
@@ -443,6 +446,7 @@ export default function AnalyticsScreen() {
                             data={chartDataWeight}
                             goal={profile?.goal_weight_kg ?? currentWeight}
                             width={CHART_WIDTH}
+                            unit="kg"
                           />
                         ) : (
                           <View style={styles.emptyChart}>
@@ -581,10 +585,10 @@ const styles = StyleSheet.create({
   // ── Segmented control ──
   segmentedControl: {
     flexDirection:   "row",
-    backgroundColor: colors.bg,
+    backgroundColor: colors.primaryLight,
     borderRadius:    radius.pill,
     borderWidth:     1,
-    borderColor:     colors.border,
+    borderColor:     colors.primaryBorder,
     padding:         3,
   },
   segment: {
@@ -594,7 +598,9 @@ const styles = StyleSheet.create({
     alignItems:      "center",
   },
   segmentActive: {
-    backgroundColor: colors.bgCard,
+    backgroundColor: colors.white,
+    borderWidth:     1,
+    borderColor:     colors.primary,
     ...Platform.select({
       ios: {
         shadowColor:   colors.accentBorder,

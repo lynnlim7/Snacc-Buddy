@@ -80,7 +80,11 @@ export function PillowButton({
         <View style={styles.row}>
           <ActivityIndicator
             size="small"
-            color={variant === "outline" ? colors.accent : colors.text}
+            color={
+              variant === "outline" ? colors.accent
+              : variant === "accent" ? colors.white
+              : colors.text
+            }
           />
           <Text style={[pillowButtonText, styles.loadingText]}>
             {microcopy.loading}
@@ -93,6 +97,7 @@ export function PillowButton({
             style={[
               pillowButtonText,
               variant === "outline" && { color: colors.textMuted },
+              variant === "accent" && { color: colors.white },
             ]}
           >
             {label}

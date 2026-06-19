@@ -22,8 +22,8 @@ export function DonutRing({
   size = 96,
   strokeWidth = 10,
   progress = 0,
-  color = "#9B5468",
-  bgColor = "#EDE0E3",
+  color = "#7C0116",
+  bgColor = "#FCE2EA",
   children,
 }: DonutRingProps) {
   const r             = (size - strokeWidth) / 2;

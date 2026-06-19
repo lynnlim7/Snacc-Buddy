@@ -194,10 +194,10 @@ function MealRow({
           {/* Macro bars */}
           <View style={styles.macroBarsSection}>
             {[
-              { label: "Carbs",   value: Math.round(totals.carbs),   color: "#A8C5DA" },
-              { label: "Protein", value: Math.round(totals.protein), color: "#9B5468" },
-              { label: "Fat",     value: Math.round(totals.fat),     color: "#C5B8E8" },
-              { label: "Fiber",   value: Math.round(totals.fiber),   color: "#C8D5B9" },
+              { label: "Carbs",   value: Math.round(totals.carbs),   color: "#E0A4B0" },
+              { label: "Protein", value: Math.round(totals.protein), color: "#7C0116" },
+              { label: "Fat",     value: Math.round(totals.fat),     color: "#B85C6E" },
+              { label: "Fiber",   value: Math.round(totals.fiber),   color: "#A8BC95" },
             ].map(({ label, value, color }) => (
               <View key={label} style={styles.macroBarRow}>
                 <Text style={styles.macroBarLabel}>{label}</Text>
@@ -329,7 +329,6 @@ export default function DiaryScreen() {
 
   // Reactive store selectors
   const meals                = useDiaryStore((s) => s.mealsByDate[selectedDate] ?? EMPTY_MEALS);
-  const streak               = useDiaryStore((s) => s.streak);
   const setStreak            = useDiaryStore((s) => s.setStreak);
   const addMeal              = useDiaryStore((s) => s.addMeal);
   const deleteMeal           = useDiaryStore((s) => s.deleteMeal);
@@ -494,11 +493,6 @@ export default function DiaryScreen() {
               </Text>
             </View>
             <View style={styles.headerRight}>
-              {/* Streak badge */}
-              <View style={styles.streakBadge}>
-                <Ionicons name="flame" size={13} color="#E8724A" />
-                <Text style={styles.streakCount}>{streak}</Text>
-              </View>
               {/* Avatar */}
               <View style={styles.avatar}>
                 <Text style={styles.avatarText}>{initial}</Text>

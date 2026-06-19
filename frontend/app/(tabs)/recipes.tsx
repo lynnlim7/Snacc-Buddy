@@ -207,7 +207,7 @@ const styles = StyleSheet.create({
 
   // ── Budget banner ──
   budgetBanner: {
-    backgroundColor: colors.primaryLight,
+    backgroundColor: colors.bgSecondary,
     borderRadius:    radius.md,
     borderWidth:     1,
     borderColor:     colors.primaryBorder,
@@ -252,10 +252,10 @@ const styles = StyleSheet.create({
   searchBar: {
     flexDirection:   "row",
     alignItems:      "center",
-    backgroundColor: colors.bgCard,
+    backgroundColor: colors.bgSecondary,
     borderRadius:    radius.pill,
     borderWidth:     1,
-    borderColor:     colors.border,
+    borderColor:     colors.primaryBorder,
     paddingHorizontal: spacing.md,
     paddingVertical:   10,
     gap:             spacing.sm,
@@ -278,9 +278,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical:   7,
     borderRadius:      radius.pill,
-    backgroundColor:   colors.bgCard,
+    backgroundColor:   colors.primaryLight,
     borderWidth:       1,
-    borderColor:       colors.border,
+    borderColor:       colors.primaryBorder,
   },
   chipActive: {
     backgroundColor: colors.primary,

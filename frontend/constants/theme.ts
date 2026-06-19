@@ -2,42 +2,48 @@ import { Platform } from "react-native";
 import type { TextStyle, ViewStyle } from "react-native";
 
 // ─── Colour palette ───────────────────────────────────────────
+// Brand swatches:
+//   Lemon Soda    #FFFDE9  warm cream     page background (diary paper)
+//   Cotton Candy  #FFD7E7  blush pink     cards, inputs, secondary surfaces
+//   Hibiscus Tonic#E0A4B0  mauve pink     accents, macro bars, chart fills
+//   Cherry Cola   #7C0116  deep wine      primary buttons, active states
+//   Deep Cherry   #47131C  near-black wine body text, foreground
 export const colors = {
-  // Journal backgrounds
-  bg:           "#F5F0EB", // Warm cream — main background (Figma)
-  bgSecondary:  "#FFFDF8", // Off-white paper — cards / input fields
-  bgCard:       "#FFFFFF", // Pure white — content cards (Figma)
+  // Backgrounds
+  bg:           "#FFFDE9", // Lemon Soda — warm cream page background
+  bgSecondary:  "#FFD7E7", // Cotton Candy — blush inputs, search bars, banners
+  bgCard:       "#FFF4F8", // pale blush — content cards
 
   // Text
-  text:         "#2D1B24", // Deep rose-brown — primary text (Figma)
-  textMuted:    "#9B8578", // Muted warm — secondary text
-  textLight:    "#C4AFA6", // Light — hints, placeholders
+  text:         "#47131C", // Deep Cherry — primary text / foreground
+  textMuted:    "#8A4A56", // muted wine — secondary text
+  textLight:    "#C08A98", // light mauve — hints / placeholders
 
-  // Primary brand — mauve rose (Figma active states, CTAs, rings)
-  primary:       "#9B5468", // Active tab, main CTA, donut fill
-  primaryLight:  "#EDE0E3", // Tag backgrounds, pill fills
-  primaryBorder: "#C49AA8", // Mauve border
+  // Primary brand — Cherry Cola wine (active states, CTAs, rings)
+  primary:       "#7C0116", // Cherry Cola — primary button, active tab, donut fill
+  primaryLight:  "#FCE2EA", // pale pink — tag / pill / chip fills
+  primaryBorder: "#E0A4B0", // Hibiscus Tonic — borders, macro bars, chart fills
 
-  // Brand accents
-  accent:       "#E8B98A", // Warm peach — primary CTA
-  accentBorder: "#C89B7B", // Light brown — button shadow / border
-  accentDark:   "#A87855", // Dark brown — pressed state
+  // Brand accents — CTA = wine
+  accent:       "#7C0116", // Cherry Cola — primary CTA
+  accentBorder: "#5A0210", // deep wine — button shadow / border
+  accentDark:   "#47131C", // Deep Cherry — pressed state
 
-  // Palette accents
-  softPink:       "#F3D6D0", // Soft pink — secondary selections
-  softPinkBorder: "#DEB8B0", // Soft pink border
-  matcha:         "#C8D5B9", // Matcha green — success / healthy
-  matchaBorder:   "#A8BC95", // Matcha border
-  lightBrown:     "#C89B7B", // Light brown — neutral accents
+  // Palette accents (blush family)
+  softPink:       "#FFD7E7", // Cotton Candy — secondary selections
+  softPinkBorder: "#E0A4B0", // Hibiscus Tonic — border
+  matcha:         "#C8D5B9", // sage green — success / healthy / fibre
+  matchaBorder:   "#A8BC95", // sage border
+  lightBrown:     "#E0A4B0", // mauve — neutral accents
 
-  // Pastel blue — onboarding selected state
-  pastelBlue:       "#B8D4E8", // Soft sky blue
-  pastelBlueBorder: "#8FBBDA", // Pastel blue border / shadow
+  // Selected state (blush) — used by onboarding chips
+  pastelBlue:       "#FFD7E7", // Cotton Candy — selected
+  pastelBlueBorder: "#E0A4B0", // Hibiscus Tonic — selected border / shadow
 
   // Utility
-  white:  "#FFFDF8",
-  error:  "#D97B78", // Soft red — error states
-  border: "#E8DDD2", // Warm border dividers
+  white:  "#FFFFFF",
+  error:  "#C0392B", // clear red — distinct from wine primary
+  border: "#F2D6DE", // soft blush dividers
 } as const;
 
 // ─── Typography (Caveat = handwritten headings, Nunito = friendly body) ────
@@ -150,10 +156,10 @@ export const inputStyle: ViewStyle = {
 };
 
 // ─── Option chip — selectable choice pill ─────────────────────
-// Selected state uses pastel blue (#B8D4E8) across all onboarding screens.
+// Selected = saturated Cotton Candy blush; unselected = palest blush card tint.
 export function optionChip(selected: boolean): ViewStyle {
   return {
-    backgroundColor: selected ? colors.pastelBlue : colors.bgSecondary,
+    backgroundColor: selected ? colors.pastelBlue : colors.bgCard,
     borderRadius: radius.pill,
     borderWidth: 2,
     borderColor: selected ? colors.pastelBlueBorder : colors.border,
