@@ -106,10 +106,6 @@ export default function ChatScreen() {
             <Text style={styles.headerTitle}>Snacc Buddy</Text>
             <Text style={styles.headerSubtitle}>AI Nutrition Coach</Text>
           </View>
-          <View style={styles.onlineRow}>
-            <View style={styles.onlineDot} />
-            <Text style={styles.onlineText}>Online</Text>
-          </View>
         </View>
 
         <KeyboardAvoidingView
