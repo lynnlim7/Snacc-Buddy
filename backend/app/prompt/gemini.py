@@ -1,18 +1,31 @@
 import asyncio
 import json
-from pydantic import ValidationError
-from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 from google import genai
 from google.genai import types
 from google.genai.errors import ClientError
+from pydantic import ValidationError
+from tenacity import (
+    retry,
+    retry_if_exception_type,
+    stop_after_attempt,
+    wait_exponential,
+)
 
 from app.core.config import settings
-from app.core.exceptions import AIParseError, AIQuotaExceeded, AIRateLimited, AIServiceError, AITimeoutError
+from app.core.exceptions import (
+    AIParseError,
+    AIQuotaExceeded,
+    AIRateLimited,
+    AIServiceError,
+    AITimeoutError,
+)
 from app.prompt.prompt import PROMPTS
+from app.schemas.coach import CoachChatResponse
 from app.schemas.food import GeminiAnalysis
 
 _ANALYSIS_PROMPT = PROMPTS["system_prompt"]
+_COACH_PROMPT = PROMPTS["coach_system_prompt"]
 
 
 def _parse_retry_after(e: ClientError) -> float | None:
@@ -110,6 +123,54 @@ class GeminiService:
                 timeout=settings.GEMINI_TIMEOUT_SECONDS,
             )
             return GeminiAnalysis.model_validate(json.loads(response.text))
+        except asyncio.TimeoutError as e:
+            raise AITimeoutError() from e
+        except ClientError as e:
+            if e.code == 429:
+                if _is_daily_quota_exhausted(e):
+                    raise AIQuotaExceeded() from e
+                raise AIRateLimited(_parse_retry_after(e) or 10.0) from e
+            raise AIServiceError(str(e)) from e
+        except (json.JSONDecodeError, ValidationError) as e:
+            raise AIParseError(str(e)) from e
+
+
+    async def coach_chat(
+        self,
+        user_context: dict,
+        messages: list[dict],
+    ) -> CoachChatResponse:
+        """Answer a nutrition-coach question grounded in the user's own data.
+
+        `user_context` is injected as ground truth; `messages` is the running
+        conversation ({"role": "user"|"coach", "content": str}). Roles are mapped
+        to Gemini's "user"/"model" convention. Scope + medical guardrails live in
+        the coach system prompt, which forces a JSON CoachChatResponse.
+        """
+        context_block = (
+            "USER CONTEXT (ground truth — base all advice on this):\n"
+            + json.dumps(user_context, default=str, indent=2)
+        )
+        contents = [_COACH_PROMPT, context_block] + [
+            types.Content(
+                role="model" if m["role"] == "coach" else "user",
+                parts=[types.Part(text=m["content"])],
+            )
+            for m in messages
+        ]
+        try:
+            response = await asyncio.wait_for(
+                self._client.aio.models.generate_content(
+                    model=settings.GEMINI_MODEL,
+                    contents=contents,
+                    config=types.GenerateContentConfig(
+                        response_mime_type="application/json",
+                        temperature=settings.GEMINI_TEMPERATURE,
+                    ),
+                ),
+                timeout=settings.GEMINI_TIMEOUT_SECONDS,
+            )
+            return CoachChatResponse.model_validate(json.loads(response.text))
         except asyncio.TimeoutError as e:
             raise AITimeoutError() from e
         except ClientError as e:

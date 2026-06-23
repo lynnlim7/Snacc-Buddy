@@ -48,13 +48,6 @@ const LIFESTYLES = [
   { value: "homemaker", label: "Homemaker" },
 ];
 
-// Goal mode buttons shown on the calorie goal card
-const GOAL_MODES = [
-  { value: "lose_weight",  label: "Lose weight",   icon: "trending-down-outline" },
-  { value: "maintain",     label: "Maintain",       icon: "remove-outline" },
-  { value: "gain_muscle",  label: "Gain muscle",    icon: "trending-up-outline" },
-];
-
 // BMI category badge — wine brand colour across all categories (monochrome, per Figma)
 function bmiColor(_category: string): string {
   return "#7C0116";
@@ -144,11 +137,6 @@ export default function ProfileScreen() {
     ? Math.max(0, Math.min(100, ((bmi.value - 15) / 25) * 100))
     : 0;
 
-  // Current goal mode (map goal → GOAL_MODES value)
-  const currentGoalMode =
-    goal === "gain_muscle" ? "gain_muscle" :
-    (goal === "lose_weight" || goal === "lose_fat") ? "lose_weight" :
-    "maintain";
 
   async function handleSave() {
     setSaving(true);
@@ -279,38 +267,6 @@ export default function ProfileScreen() {
                   <Text style={styles.macroBreakdownValue}>{value}g</Text>
                   <Text style={styles.macroBreakdownLabel}>{label}</Text>
                 </View>
-              ))}
-            </View>
-
-            {/* Goal mode selector */}
-            <View style={styles.goalModeRow}>
-              {GOAL_MODES.map((gm) => (
-                <TouchableOpacity
-                  key={gm.value}
-                  style={[
-                    styles.goalModeBtn,
-                    currentGoalMode === gm.value && styles.goalModeBtnActive,
-                  ]}
-                  onPress={() => {
-                    if (gm.value === "maintain") setGoal("eat_healthier");
-                    else setGoal(gm.value);
-                  }}
-                  activeOpacity={0.8}
-                >
-                  <Ionicons
-                    name={gm.icon as any}
-                    size={14}
-                    color={currentGoalMode === gm.value ? "#FFFFFF" : colors.textMuted}
-                  />
-                  <Text
-                    style={[
-                      styles.goalModeBtnText,
-                      currentGoalMode === gm.value && styles.goalModeBtnTextActive,
-                    ]}
-                  >
-                    {gm.label}
-                  </Text>
-                </TouchableOpacity>
               ))}
             </View>
           </View>
@@ -655,38 +611,6 @@ const styles = StyleSheet.create({
     fontFamily: fonts.body400,
     fontSize:   10,
     color:      colors.textMuted,
-  },
-
-  // ── Goal mode buttons ──
-  goalModeRow: {
-    flexDirection: "row",
-    gap:           spacing.xs,
-    marginTop:     spacing.xs,
-  },
-  goalModeBtn: {
-    flex:            1,
-    flexDirection:   "row",
-    alignItems:      "center",
-    justifyContent:  "center",
-    gap:             4,
-    backgroundColor: colors.bg,
-    borderRadius:    radius.pill,
-    paddingVertical: 9,
-    borderWidth:     1,
-    borderColor:     colors.border,
-  },
-  goalModeBtnActive: {
-    backgroundColor: colors.primary,
-    borderColor:     colors.primary,
-  },
-  goalModeBtnText: {
-    fontFamily: fonts.body500,
-    fontSize:   11,
-    color:      colors.textMuted,
-  },
-  goalModeBtnTextActive: {
-    color:      "#FFFFFF",
-    fontFamily: fonts.body600,
   },
 
   // ── Stats grid ──

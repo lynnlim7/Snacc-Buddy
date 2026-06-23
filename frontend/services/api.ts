@@ -3,6 +3,7 @@ import { config } from "../config";
 import { getToken } from "../stores/authStore";
 import { UserProfile } from "../stores/userStore";
 import { AnalyzeResponse, DailySummary, FoodLogList, FoodLogResponse, GeminiAnalysis, WeeklySummary } from "../types/food";
+import { CoachChatResponse, CoachMessage } from "../types/coach";
 
 const client = axios.create({ baseURL: config.apiUrl });
 
@@ -120,6 +121,17 @@ export const foodApi = {
     inference_log_id?: string;
   }): Promise<GeminiAnalysis> => {
     const { data } = await client.post<GeminiAnalysis>("/api/v1/food/chat", payload);
+    return data;
+  },
+};
+
+export const coachApi = {
+  /** Ask the AI nutrition coach a question; the full conversation is sent each call. */
+  chat: async (messages: CoachMessage[]): Promise<CoachChatResponse> => {
+    const { data } = await client.post<CoachChatResponse>(
+      "/api/v1/nutrition-coach/chat",
+      { messages }
+    );
     return data;
   },
 };
