@@ -1,3 +1,4 @@
+import asyncio
 import hashlib
 import logging
 from datetime import date
@@ -106,6 +107,7 @@ class FoodService:
         self,
         user_id: str,
         payload: FoodLogConfirm,
+        user=None,
     ) -> FoodLogResponse:
         log_data = FoodLogCreate(
             user_id=user_id,
@@ -114,7 +116,26 @@ class FoodService:
             analysis=payload.analysis,
             inference_log_id=payload.inference_log_id,
         )
-        return await self.repo.create(log_data)
+        food_log = await self.repo.create(log_data)
+
+        # Stage-1 fan-out: fire-and-forget so meal-log latency is unaffected.
+        # The orchestrator persists memory + insight + retrieval candidates in the background.
+        if user is not None:
+            asyncio.create_task(self._run_stage1(user))
+
+        return food_log
+
+    async def _run_stage1(self, user) -> None:
+        """Background Stage-1 orchestration — imports lazily to avoid circular deps."""
+        try:
+            from app.nutrition_coach.services.orchestrator import NutritionCoachOrchestrator
+            from app.core.database import AsyncSessionLocal
+
+            async with AsyncSessionLocal() as db:
+                orchestrator = NutritionCoachOrchestrator(db)
+                await orchestrator.prepare(user)
+        except Exception:
+            logger.exception("food_service.stage1_background user=%s", user.id)
 
     async def get_logs(
         self, user_id: str, limit: int, offset: int, target_date: "date | None" = None

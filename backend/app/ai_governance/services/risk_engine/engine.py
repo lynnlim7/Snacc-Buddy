@@ -12,6 +12,8 @@ from app.ai_governance.services.risk_engine.rules.calorie_plausibility_rule impo
 from app.ai_governance.services.risk_engine.rules.ingredient_uncertainty_rule import (
     IngredientUncertaintyRule,
 )
+from app.ai_governance.services.risk_engine.rules.medical_advice_rule import MedicalAdviceRule
+from app.ai_governance.services.risk_engine.rules.out_of_scope_rule import OutOfScopeRule
 
 logger = logging.getLogger(__name__)
 
@@ -81,6 +83,9 @@ class RiskAssessmentEngine:
         RestaurantRule(),
         CaloriePlausibilityRule(),
         IngredientUncertaintyRule(),
+        # Coaching guardrail rules — only fire when the relevant context keys are present
+        MedicalAdviceRule(),
+        OutOfScopeRule(),
     ]
 
     def __init__(self, rules: list[BaseRiskRule] | None = None) -> None:

@@ -183,4 +183,22 @@ class GeminiService:
             raise AIParseError(str(e)) from e
 
 
+    async def embed_text(self, text: str) -> list[float]:
+        """Embed a text string using the configured Gemini embedding model.
+
+        Returns a flat list of floats (length = EMBEDDING_DIM).
+        """
+        import asyncio as _asyncio
+
+        response = await _asyncio.wait_for(
+            self._client.aio.models.embed_content(
+                model=settings.EMBEDDING_MODEL,
+                contents=text,
+                config=types.EmbedContentConfig(output_dimensionality=settings.EMBEDDING_DIM),
+            ),
+            timeout=settings.GEMINI_TIMEOUT_SECONDS,
+        )
+        return list(response.embeddings[0].values)
+
+
 gemini_service = GeminiService()

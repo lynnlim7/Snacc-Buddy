@@ -2,6 +2,7 @@ import uuid
 from typing import Literal
 
 from pydantic import BaseModel, Field
+from datetime import datetime
 
 
 class CoachMessage(BaseModel):
@@ -43,3 +44,19 @@ class CoachChatResponse(BaseModel):
     in_scope: bool = True
     recipes: list[CoachRecipe] = []
     inference_log_id: uuid.UUID | None = None
+
+
+class CoachInsightResponse(BaseModel):
+    """Serialised output of the deterministic NutritionInsightEngine."""
+
+    protein_deficit: bool
+    fibre_deficit: bool
+    excess_sodium: bool
+    calorie_surplus: bool
+    low_meal_consistency: bool
+    protein_adherence_pct: float | None = None
+    calorie_adherence_pct: float | None = None
+    fibre_adherence_pct: float | None = None
+    avg_calories_7d: float | None = None
+    calorie_target: float | None = None
+    computed_at: str

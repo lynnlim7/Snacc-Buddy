@@ -26,7 +26,7 @@ async def confirm_food_log(
     service: FoodService = Depends(get_food_service),
 ) -> FoodLogResponse:
     logger.info("confirm_food_log user=%s meal_type=%s", user.id, payload.meal_type)
-    return await service.confirm_log(user_id=str(user.id), payload=payload)
+    return await service.confirm_log(user_id=str(user.id), payload=payload, user=user)
 
 
 @router.get("/logs", response_model=FoodLogList)

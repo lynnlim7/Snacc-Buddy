@@ -14,30 +14,28 @@ from app.core.auth import current_active_user
 from app.core.config import settings
 from app.core.database import get_db
 from app.models.user import User
-from app.prompt.gemini import gemini_service
+from app.nutrition_coach.repositories.nutrition_summary import NutritionSummaryRepository
+from app.nutrition_coach.services.orchestrator import NutritionCoachOrchestrator
+from app.nutrition_coach.services.recommendation import RecommendationAgent
 from app.repositories.food import FoodRepository
-from app.schemas.coach import CoachChatRequest, CoachChatResponse
+from app.schemas.coach import (
+    CoachChatRequest,
+    CoachChatResponse,
+    CoachInsightResponse,
+)
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
-# How much recent history the coach reasons over.
 _RECENT_MEAL_LIMIT = 10
 
 
 async def _build_user_context(db: AsyncSession, user: User) -> dict:
-    """Assemble the ground-truth context the coach reasons over.
-
-    Pulls the user's profile, today's running totals, and recent meals — the
-    "existing information" the coach grounds its advice in. (When the Nutrition
-    Memory Layer lands this is where the 7/30/90-day summary plugs in.)
-    """
+    """Profile + today's totals + recent meals — real-time ground truth for the coach."""
     food_repo = FoodRepository(db)
     user_id = str(user.id)
-
     recent_logs, _ = await food_repo.get_by_user(user_id, limit=_RECENT_MEAL_LIMIT, offset=0)
     today = await food_repo.get_daily_summary(user_id, date.today())
-
     return {
         "profile": {
             "name": user.name,
@@ -68,6 +66,24 @@ async def _build_user_context(db: AsyncSession, user: User) -> dict:
     }
 
 
+async def _resolve_governance(db: AsyncSession):
+    model_repo = ModelRegistryRepository(db)
+    prompt_repo = PromptRegistryRepository(db)
+    default_model = await model_repo.get_default_model()
+    if not default_model:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="No default AI model configured. Register one via /api/v1/governance/models.",
+        )
+    active_prompt = await prompt_repo.get_active_prompt_for_model(default_model.id)
+    if not active_prompt:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="No active prompt configured for the default model.",
+        )
+    return default_model, active_prompt
+
+
 @router.post(
     "/chat",
     response_model=CoachChatResponse,
@@ -86,52 +102,39 @@ async def coach_chat(
     audit_service: InferenceAuditService = Depends(get_inference_audit_service),
     db: AsyncSession = Depends(get_db),
 ) -> CoachChatResponse:
-    """Stateless nutrition-coach chat.
+    """Stage-2 coaching chat — grounded in Stage-1 persisted outputs when available.
 
-    The client sends the full conversation; the coach answers the latest user
-    turn grounded in that user's profile + logged meals. Every call is recorded
-    through the governance audit envelope (model/prompt version, confidence,
-    risk). Scope + medical guardrails are enforced by the coach system prompt.
+    On first use (no Stage-1 data yet) the route falls back to basic profile + recent
+    meals context. Stage-1 data enriches every chat call once the user has logged meals.
     """
     logger.info("coach_chat user=%s messages=%d", user.id, len(payload.messages))
 
-    model_repo = ModelRegistryRepository(db)
-    prompt_repo = PromptRegistryRepository(db)
-
-    default_model = await model_repo.get_default_model()
-    if not default_model:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=(
-                "No default AI model is configured. "
-                "Register and activate a model via /api/v1/governance/models."
-            ),
-        )
-
-    active_prompt = await prompt_repo.get_active_prompt_for_model(default_model.id)
-    if not active_prompt:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=(
-                "No active prompt is configured for the default model. "
-                "Activate a prompt version via /api/v1/governance/prompts."
-            ),
-        )
-
+    default_model, active_prompt = await _resolve_governance(db)
     user_context = await _build_user_context(db, user)
-    messages = [{"role": m.role, "content": m.content} for m in payload.messages]
+
+    # Load Stage-1 persisted outputs (graceful fallback if none exist yet)
+    orchestrator = NutritionCoachOrchestrator(db)
+    snapshot, insight, top10 = await orchestrator.load_stage1(str(user.id))
 
     log_id, start = await audit_service.begin_inference(
         model_id=default_model.id,
         prompt_version_id=active_prompt.id,
         request_payload={
-            "messages": messages,
-            "context_keys": sorted(user_context.keys()),
+            "messages": [{"role": m.role, "content": m.content} for m in payload.messages],
+            "has_snapshot": snapshot is not None,
+            "has_insight": insight is not None,
         },
     )
 
     try:
-        result = await gemini_service.coach_chat(user_context, messages)
+        agent = RecommendationAgent()
+        result = await agent.recommend(
+            snapshot=snapshot,
+            insight=insight,
+            top10=top10,
+            messages=payload.messages,
+            user_context=user_context,
+        )
     except Exception:
         await audit_service.record_failure(
             log_id, start, InferenceStatus.FAILED, {"error": "coach_chat_failed"}
@@ -142,8 +145,6 @@ async def coach_chat(
         log_id=log_id,
         start_time=start,
         response_payload=result.model_dump(mode="json"),
-        # In-scope answers are treated as high-confidence; out-of-scope redirects
-        # are flagged lower so they surface in governance review queries.
         confidence_score=0.9 if result.in_scope else 0.5,
         status=InferenceStatus.SUCCESS,
         risk_context={
@@ -154,3 +155,73 @@ async def coach_chat(
 
     result.inference_log_id = log_id
     return result
+
+
+@router.post(
+    "/analyze",
+    response_model=dict,
+    dependencies=[
+        Depends(
+            RateLimiter(
+                times=settings.AI_RATE_LIMIT_REQUESTS,
+                seconds=settings.AI_RATE_LIMIT_WINDOW_SECONDS,
+            )
+        )
+    ],
+)
+async def run_full_analysis(
+    user: User = Depends(current_active_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """On-demand trigger for Stage-1 orchestration (memory + insight + retrieval).
+
+    Useful on first app open or after a long gap without logging. Stage-1 normally
+    runs automatically on every meal log via FoodService.confirm_log.
+    """
+    orchestrator = NutritionCoachOrchestrator(db)
+    snapshot, insight, top10 = await orchestrator.prepare(user)
+    return {
+        "snapshot_id": str(snapshot.id),
+        "snapshot_date": snapshot.snapshot_date.isoformat(),
+        "insights": {
+            "protein_deficit": insight.protein_deficit,
+            "fibre_deficit": insight.fibre_deficit,
+            "excess_sodium": insight.excess_sodium,
+            "calorie_surplus": insight.calorie_surplus,
+            "low_meal_consistency": insight.low_meal_consistency,
+        },
+        "recipes_retrieved": len(top10),
+    }
+
+
+@router.get("/insights", response_model=CoachInsightResponse)
+async def get_insights(
+    user: User = Depends(current_active_user),
+    db: AsyncSession = Depends(get_db),
+) -> CoachInsightResponse:
+    """Return the latest computed nutrition insights for the current user.
+
+    These are deterministic (no AI) — updated automatically on every meal log.
+    Returns a 404 if no insights have been computed yet (no meals logged).
+    """
+    repo = NutritionSummaryRepository(db)
+    insight = await repo.get_latest_insight(str(user.id))
+    if not insight:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No insights available yet. Log a meal to generate your first insights.",
+        )
+    summary = await repo.get_latest_summary(str(user.id))
+    return CoachInsightResponse(
+        protein_deficit=insight.protein_deficit,
+        fibre_deficit=insight.fibre_deficit,
+        excess_sodium=insight.excess_sodium,
+        calorie_surplus=insight.calorie_surplus,
+        low_meal_consistency=insight.low_meal_consistency,
+        protein_adherence_pct=insight.protein_adherence_pct,
+        calorie_adherence_pct=insight.calorie_adherence_pct,
+        fibre_adherence_pct=insight.fibre_adherence_pct,
+        avg_calories_7d=summary.avg_calories_7d if summary else None,
+        calorie_target=summary.calorie_target if summary else None,
+        computed_at=insight.created_at.isoformat(),
+    )

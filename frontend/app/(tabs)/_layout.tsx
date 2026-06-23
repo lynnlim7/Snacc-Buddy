@@ -70,10 +70,17 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="coach"
+        options={{
+          title:      "Coach",
+          tabBarIcon: ({ focused }) => <TabIcon name="nutrition-outline" focused={focused} />,
+        }}
+      />
+      <Tabs.Screen
         name="chat"
         options={{
           title:      "Chat",
-          tabBarIcon: ({ focused }) => <TabIcon name="restaurant-outline" focused={focused} />,
+          tabBarIcon: ({ focused }) => <TabIcon name="chatbubble-outline" focused={focused} />,
         }}
       />
       <Tabs.Screen

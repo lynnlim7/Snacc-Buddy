@@ -50,6 +50,13 @@ class Settings(BaseSettings):
     CLOUDFLARE_R2_BUCKET_NAME: str = ""
     CLOUDFLARE_R2_PUBLIC_URL: str = ""
 
+    EMBEDDING_MODEL: str = "models/gemini-embedding-001"
+    EMBEDDING_DIM: int = 768
+
+    RETRIEVAL_TOP_SEMANTIC: int = 50
+    RETRIEVAL_TOP_FILTERED: int = 30
+    RETRIEVAL_TOP_SCORED: int = 10
+
     @model_validator(mode="after")
     def _check_secrets(self) -> "Settings":
         if self.ENV not in ("development", "test"):

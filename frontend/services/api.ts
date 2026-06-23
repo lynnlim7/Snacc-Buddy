@@ -3,7 +3,7 @@ import { config } from "../config";
 import { getToken } from "../stores/authStore";
 import { UserProfile } from "../stores/userStore";
 import { AnalyzeResponse, DailySummary, FoodLogList, FoodLogResponse, GeminiAnalysis, WeeklySummary } from "../types/food";
-import { CoachChatResponse, CoachMessage } from "../types/coach";
+import { CoachChatResponse, CoachInsight, CoachMessage } from "../types/coach";
 
 const client = axios.create({ baseURL: config.apiUrl });
 
@@ -132,6 +132,18 @@ export const coachApi = {
       "/api/v1/nutrition-coach/chat",
       { messages }
     );
+    return data;
+  },
+
+  /** Fetch the latest deterministic nutrition insights (computed on every meal log). */
+  getInsights: async (): Promise<CoachInsight> => {
+    const { data } = await client.get<CoachInsight>("/api/v1/nutrition-coach/insights");
+    return data;
+  },
+
+  /** On-demand Stage-1 trigger: refreshes memory snapshot, insights, and retrieval. */
+  analyzeNow: async (): Promise<{ snapshot_id: string; insights: Record<string, boolean> }> => {
+    const { data } = await client.post("/api/v1/nutrition-coach/analyze");
     return data;
   },
 };
