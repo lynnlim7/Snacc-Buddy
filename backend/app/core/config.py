@@ -34,6 +34,7 @@ class Settings(BaseSettings):
     VERIFICATION_TOKEN_SECRET: str = "change-me-verification-secret"
 
     FRONTEND_RESET_PASSWORD_URL: str = "http://localhost:8081/reset-password"
+    FRONTEND_VERIFY_EMAIL_URL: str = "http://localhost:8081/verify-email"
 
     MAIL_USERNAME: str
     MAIL_PASSWORD: str

@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Welcome to Snacc Buddy!</title>
+</head>
+<body style="margin:0;padding:0;background-color:#FFFDE9;font-family:Arial,Helvetica,sans-serif;">
+
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#FFFDE9;">
+    <tr>
+      <td align="center" style="padding:40px 16px;">
+
+        <table width="520" cellpadding="0" cellspacing="0" border="0"
+               style="max-width:520px;background-color:#FFF4F8;border-radius:24px;
+                      border:1.5px solid #F2D6DE;overflow:hidden;">
+
+          <!-- Header -->
+          <tr>
+            <td align="center" style="background-color:#7C0116;padding:32px 32px 28px;">
+              <p style="margin:0 0 6px;font-size:26px;font-weight:700;color:#FFFDE9;letter-spacing:0.5px;">
+                Snacc Buddy
+              </p>
+              <p style="margin:0;font-size:14px;color:#FCE2EA;letter-spacing:0.3px;">
+                Your personal snack diary
+              </p>
+            </td>
+          </tr>
+
+          <!-- Hero text -->
+          <tr>
+            <td align="center" style="padding:36px 40px 0;">
+              <p style="margin:0 0 8px;font-size:28px;font-weight:700;color:#47131C;">
+                You're in! 🎉
+              </p>
+              <p style="margin:0;font-size:15px;line-height:1.6;color:#47131C;">
+                {% if name %}Hey {{ name }}, welcome{% else %}Welcome{% endif %} to Snacc Buddy —
+                we're so glad you're here. Your food diary is ready and waiting.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Feature highlights -->
+          <tr>
+            <td style="padding:28px 40px 0;">
+
+              <!-- Feature 1 -->
+              <table cellpadding="0" cellspacing="0" border="0" width="100%"
+                     style="background-color:#FFD7E7;border-radius:16px;
+                            border:1.5px solid #F2D6DE;margin-bottom:12px;">
+                <tr>
+                  <td style="padding:16px 20px;">
+                    <p style="margin:0 0 4px;font-size:15px;font-weight:700;color:#47131C;">
+                      📸 Snap &amp; track
+                    </p>
+                    <p style="margin:0;font-size:13px;line-height:1.5;color:#8A4A56;">
+                      Take a photo of your meal and let Snacc Buddy do the maths. No manual logging needed.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Feature 2 -->
+              <table cellpadding="0" cellspacing="0" border="0" width="100%"
+                     style="background-color:#FFD7E7;border-radius:16px;
+                            border:1.5px solid #F2D6DE;margin-bottom:12px;">
+                <tr>
+                  <td style="padding:16px 20px;">
+                    <p style="margin:0 0 4px;font-size:15px;font-weight:700;color:#47131C;">
+                      📊 See your patterns
+                    </p>
+                    <p style="margin:0;font-size:13px;line-height:1.5;color:#8A4A56;">
+                      Daily and weekly breakdowns of calories, protein, carbs, and fat — all in one place.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Feature 3 -->
+              <table cellpadding="0" cellspacing="0" border="0" width="100%"
+                     style="background-color:#FFD7E7;border-radius:16px;
+                            border:1.5px solid #F2D6DE;margin-bottom:0;">
+                <tr>
+                  <td style="padding:16px 20px;">
+                    <p style="margin:0 0 4px;font-size:15px;font-weight:700;color:#47131C;">
+                      💬 Ask your buddy
+                    </p>
+                    <p style="margin:0;font-size:13px;line-height:1.5;color:#8A4A56;">
+                      Chat with your AI nutrition buddy anytime for guidance, swaps, and snack ideas.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+
+            </td>
+          </tr>
+
+          <!-- Closing note -->
+          <tr>
+            <td style="padding:28px 40px 32px;">
+              <p style="margin:0;font-size:15px;line-height:1.6;color:#47131C;">
+                Open the app whenever you're ready — your diary is empty and waiting for its first entry. 
+              </p>
+            </td>
+          </tr>
+
+          <!-- Divider -->
+          <tr>
+            <td style="padding:0 40px;">
+              <hr style="border:none;border-top:1.5px solid #F2D6DE;margin:0;" />
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color:#FFD7E7;padding:20px 40px;border-top:1.5px solid #F2D6DE;">
+              <p style="margin:0;font-size:12px;line-height:1.5;color:#8A4A56;text-align:center;">
+                You're receiving this because you created a Snacc Buddy account.<br />
+                &copy; {{ year }} Snacc Buddy. All rights reserved.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+
+      </td>
+    </tr>
+  </table>
+
+</body>
+</html>

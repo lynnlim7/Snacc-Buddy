@@ -3,25 +3,22 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Reset your Snacc Buddy password</title>
+  <title>Verify your Snacc Buddy email</title>
 </head>
 <body style="margin:0;padding:0;background-color:#FFFDE9;font-family:Arial,Helvetica,sans-serif;">
 
-  <!-- Outer wrapper -->
   <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#FFFDE9;">
     <tr>
       <td align="center" style="padding:40px 16px;">
 
-        <!-- Email card -->
         <table width="520" cellpadding="0" cellspacing="0" border="0"
                style="max-width:520px;background-color:#FFF4F8;border-radius:24px;
                       border:1.5px solid #F2D6DE;overflow:hidden;">
 
-          <!-- Header band -->
+          <!-- Header -->
           <tr>
             <td align="center" style="background-color:#7C0116;padding:28px 32px 24px;">
-              <p style="margin:0;font-size:26px;font-weight:700;color:#FFFDE9;
-                         letter-spacing:0.5px;">
+              <p style="margin:0;font-size:26px;font-weight:700;color:#FFFDE9;letter-spacing:0.5px;">
                 Snacc Buddy
               </p>
             </td>
@@ -32,29 +29,28 @@
             <td style="padding:36px 40px 32px;">
 
               <p style="margin:0 0 8px;font-size:22px;font-weight:700;color:#47131C;">
-                Hey{% if name %} {{ name }}{% endif %}! 👋
+                One quick step! ✉️
               </p>
 
               <p style="margin:0 0 20px;font-size:15px;line-height:1.6;color:#47131C;">
-                We got a request to reset the password for your Snacc Buddy account.
-                No worries — it happens to the best of us!
+                Hey{% if name %} {{ name }}{% endif %}, thanks for joining Snacc Buddy!
+                Before we get your snack journey started, we just need to confirm
+                that this email address belongs to you.
               </p>
 
               <p style="margin:0 0 28px;font-size:15px;line-height:1.6;color:#47131C;">
-                Click the button below to choose a new password:
+                Hit the button below and you'll be all set:
               </p>
 
               <!-- CTA button -->
               <table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto 28px;">
                 <tr>
                   <td align="center"
-                      style="background-color:#7C0116;border-radius:100px;
-                             border:2px solid #5A0210;">
-                    <a href="{{ reset_link }}"
-                       style="display:inline-block;padding:14px 36px;
-                              font-size:16px;font-weight:700;color:#FFFDE9;
-                              text-decoration:none;letter-spacing:0.3px;">
-                      Reset My Password
+                      style="background-color:#7C0116;border-radius:100px;border:2px solid #5A0210;">
+                    <a href="{{ verify_link }}"
+                       style="display:inline-block;padding:14px 36px;font-size:16px;
+                              font-weight:700;color:#FFFDE9;text-decoration:none;letter-spacing:0.3px;">
+                      Verify My Email
                     </a>
                   </td>
                 </tr>
@@ -62,24 +58,21 @@
 
               <!-- Fallback link -->
               <p style="margin:0 0 4px;font-size:13px;color:#8A4A56;">
-                If the button doesn't work, copy and paste this link into your browser:
+                Button not working? Copy and paste this link into your browser:
               </p>
               <p style="margin:0 0 28px;font-size:13px;word-break:break-all;">
-                <a href="{{ reset_link }}" style="color:#7C0116;">{{ reset_link }}</a>
+                <a href="{{ verify_link }}" style="color:#7C0116;">{{ verify_link }}</a>
               </p>
 
               <!-- Divider -->
               <hr style="border:none;border-top:1.5px solid #F2D6DE;margin:0 0 24px;" />
 
-              <!-- Security notes -->
               <p style="margin:0 0 10px;font-size:13px;line-height:1.6;color:#8A4A56;">
-                ⏰ <strong>This link expires in 1 hour.</strong>
-                After that you'll need to request a new one.
+                ⏰ <strong>This link expires in 24 hours.</strong>
               </p>
 
               <p style="margin:0;font-size:13px;line-height:1.6;color:#8A4A56;">
-                Didn't ask to reset your password? You can safely ignore this email —
-                your password won't change until you click the link above.
+                If you didn't create a Snacc Buddy account, you can safely ignore this email.
               </p>
 
             </td>
@@ -87,19 +80,15 @@
 
           <!-- Footer -->
           <tr>
-            <td style="background-color:#FFD7E7;padding:20px 40px;
-                        border-top:1.5px solid #F2D6DE;">
-              <p style="margin:0;font-size:12px;line-height:1.5;color:#8A4A56;
-                          text-align:center;">
-                You're receiving this email because a password reset was requested
-                for your Snacc Buddy account.<br />
+            <td style="background-color:#FFD7E7;padding:20px 40px;border-top:1.5px solid #F2D6DE;">
+              <p style="margin:0;font-size:12px;line-height:1.5;color:#8A4A56;text-align:center;">
+                You're receiving this because someone signed up for Snacc Buddy with this email address.<br />
                 &copy; {{ year }} Snacc Buddy. All rights reserved.
               </p>
             </td>
           </tr>
 
         </table>
-        <!-- /Email card -->
 
       </td>
     </tr>

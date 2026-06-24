@@ -26,13 +26,21 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
     async def on_after_register(self, user: User, request: Optional[Request] = None):
         logger.info("user_registered", user_id=str(user.id), email=user.email)
         try:
-            await self.notification_service.send_signup_confirmation_email(user.email)
+            await self.notification_service.send_signup_confirmation_email(user.email, name=user.name)
         except Exception as exc:
             logger.warning("signup_email_failed", user_id=str(user.id), error=str(exc))
 
+    async def on_after_request_verify(self, user: User, token: str, request: Optional[Request] = None):
+        verify_link = f"{settings.FRONTEND_VERIFY_EMAIL_URL}?token={token}"
+        try:
+            await self.notification_service.send_verify_email(user.email, verify_link, name=user.name)
+            logger.info("verify_email_sent", user_id=str(user.id))
+        except Exception as exc:
+            logger.warning("verify_email_failed", user_id=str(user.id), error=str(exc))
+
     async def on_after_forgot_password(self, user: User, token: str, request: Optional[Request] = None):
         reset_link = f"{settings.FRONTEND_RESET_PASSWORD_URL}?token={token}"
-        await self.notification_service.send_password_reset_email(user.email, reset_link)
+        await self.notification_service.send_password_reset_email(user.email, reset_link, name=user.name)
         logger.info("password_reset_email_sent", user_id=str(user.id))
 
 
