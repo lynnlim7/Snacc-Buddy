@@ -16,9 +16,8 @@ class CoachRecipe(BaseModel):
     """A recipe suggestion surfaced inside a coach reply.
 
     Macro fields are optional so the model can omit what it cannot estimate.
-    Until the RAG Recipe Knowledge Base lands these are model-generated
-    suggestions; the shape matches the planned retrieval output so the
-    frontend does not change when real retrieval is wired in.
+    `recipe_id` is populated only when the recipe comes from the DB knowledge base —
+    omit it for model-generated suggestions.
     """
 
     title: str
@@ -29,6 +28,25 @@ class CoachRecipe(BaseModel):
     fat_g: float | None = None
     time_minutes: int | None = None
     reason: str | None = None
+    recipe_id: str | None = None
+
+
+class RecipeMetadataResponse(BaseModel):
+    """Lightweight recipe metadata returned by GET /api/v1/recipes/{id}.
+
+    `source_url` is only present when the URL passes provider validation.
+    """
+
+    id: str
+    title: str
+    calories: int | None = None
+    protein_g: float | None = None
+    carbs_g: float | None = None
+    fat_g: float | None = None
+    fibre_g: float | None = None
+    diet_tags: list[str] = []
+    cuisine_type: str | None = None
+    source_url: str | None = None
 
 
 class CoachChatRequest(BaseModel):

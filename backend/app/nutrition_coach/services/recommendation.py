@@ -52,6 +52,7 @@ def _build_coaching_context(
     if top10:
         ctx["retrieved_recipes"] = [
             {
+                "recipe_id": str(r.id),
                 "title": r.title,
                 "calories": r.calories,
                 "protein_g": r.protein_g,

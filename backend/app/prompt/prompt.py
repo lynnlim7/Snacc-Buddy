@@ -48,6 +48,10 @@ Include `recipes` ONLY when the user is asking for meal ideas, what to eat, or r
 Otherwise return an empty array. Each recipe must fit the user's goal, dietary restrictions, and
 remaining macros for the day, and the `reason` must explain why it fits THIS user.
 
+When a recipe comes from the `retrieved_recipes` list in the user context, copy its `recipe_id`
+field exactly into the recipe object. Omit `recipe_id` (or set it to null) for recipes you invent
+yourself.
+
 ---
 
 # OUTPUT FORMAT (STRICT)
@@ -67,7 +71,8 @@ Return ONLY a valid JSON object — no markdown, no prose outside JSON:
       "carbs_g": 58,
       "fat_g": 18,
       "time_minutes": 20,
-      "reason": "why this fits the user's goal and remaining macros"
+      "reason": "why this fits the user's goal and remaining macros",
+      "recipe_id": "uuid-string-or-null"
     }
   ]
 }

@@ -12,7 +12,7 @@ from app.ai_governance.enums.model_enums import ModelProvider, ModelStatus, Risk
 from app.ai_governance.enums.prompt_enums import PromptStatus
 from app.ai_governance.models.ai_model import AIModel
 from app.ai_governance.models.prompt_version import PromptVersion
-from app.api.routes import analytics, analyze, chat, food, nutrition_coach
+from app.api.routes import analytics, analyze, chat, food, nutrition_coach, recipes
 from app.core.auth import auth_backend, fastapi_users
 from app.core.config import settings
 from app.core.database import AsyncSessionLocal
@@ -102,6 +102,7 @@ def create_app() -> FastAPI:
     app.include_router(chat.router, prefix="/api/v1/food", tags=["food"])
     app.include_router(analytics.router, prefix="/api/v1/analytics", tags=["analytics"])
     app.include_router(nutrition_coach.router, prefix="/api/v1/nutrition-coach", tags=["nutrition-coach"])
+    app.include_router(recipes.router, prefix="/api/v1/recipes", tags=["recipes"])
     app.include_router(governance_router)
 
     register_exception_handlers(app)

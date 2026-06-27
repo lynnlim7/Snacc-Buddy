@@ -3,7 +3,7 @@ import { config } from "../config";
 import { getToken } from "../stores/authStore";
 import { UserProfile } from "../stores/userStore";
 import { AnalyzeResponse, DailySummary, FoodLogList, FoodLogResponse, GeminiAnalysis, WeeklySummary } from "../types/food";
-import { CoachChatResponse, CoachInsight, CoachMessage } from "../types/coach";
+import { CoachChatResponse, CoachInsight, CoachMessage, RecipeMetadata } from "../types/coach";
 
 const client = axios.create({ baseURL: config.apiUrl });
 
@@ -45,6 +45,16 @@ export const authApi = {
   ): Promise<UserProfile> => {
     const { data } = await client.patch<UserProfile>("/users/me", updates);
     return data;
+  },
+
+  /** Request a verification email to be sent to the given address. */
+  requestVerify: async (email: string): Promise<void> => {
+    await client.post("/auth/request-verify-token", { email });
+  },
+
+  /** Complete email verification with the token from the verification link. */
+  verifyEmail: async (token: string): Promise<void> => {
+    await client.post("/auth/verify", { token });
   },
 };
 
@@ -144,6 +154,12 @@ export const coachApi = {
   /** On-demand Stage-1 trigger: refreshes memory snapshot, insights, and retrieval. */
   analyzeNow: async (): Promise<{ snapshot_id: string; insights: Record<string, boolean> }> => {
     const { data } = await client.post("/api/v1/nutrition-coach/analyze");
+    return data;
+  },
+
+  /** Fetch recipe metadata (including validated source_url) for a DB recipe. */
+  getRecipeMetadata: async (recipeId: string): Promise<RecipeMetadata> => {
+    const { data } = await client.get<RecipeMetadata>(`/api/v1/recipes/${recipeId}`);
     return data;
   },
 };

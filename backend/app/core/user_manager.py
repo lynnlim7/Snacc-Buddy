@@ -25,10 +25,19 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
 
     async def on_after_register(self, user: User, request: Optional[Request] = None):
         logger.info("user_registered", user_id=str(user.id), email=user.email)
+        # Trigger the verification email — welcome email is sent in on_after_verify
+        # once the address is confirmed.
+        try:
+            await self.request_verify(user, request)
+        except Exception as exc:
+            logger.warning("request_verify_failed", user_id=str(user.id), error=str(exc))
+
+    async def on_after_verify(self, user: User, request: Optional[Request] = None):
+        logger.info("user_verified", user_id=str(user.id), email=user.email)
         try:
             await self.notification_service.send_signup_confirmation_email(user.email, name=user.name)
         except Exception as exc:
-            logger.warning("signup_email_failed", user_id=str(user.id), error=str(exc))
+            logger.warning("welcome_email_failed", user_id=str(user.id), error=str(exc))
 
     async def on_after_request_verify(self, user: User, token: str, request: Optional[Request] = None):
         verify_link = f"{settings.FRONTEND_VERIFY_EMAIL_URL}?token={token}"

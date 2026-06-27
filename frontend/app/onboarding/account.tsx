@@ -14,14 +14,10 @@ import { PillowButton } from "../../components/PillowButton";
 import { OnboardingHeader } from "../../components/OnboardingHeader";
 import { colors, fonts, spacing, inputStyle } from "../../constants/theme";
 import { authApi } from "../../services/api";
-import { useAuthStore } from "../../stores/authStore";
 import { useOnboardingStore } from "../../stores/onboardingStore";
-import { useUserStore } from "../../stores/userStore";
 
 export default function AccountScreen() {
   const router = useRouter();
-  const setToken = useAuthStore((s) => s.setToken);
-  const setProfile = useUserStore((s) => s.setProfile);
   const onboarding = useOnboardingStore();
   const [email, setEmail]           = useState("");
   const [password, setPassword]     = useState("");
@@ -29,6 +25,8 @@ export default function AccountScreen() {
   const [loading, setLoading]       = useState(false);
   const [error, setError]           = useState("");
   const [alreadyExists, setAlreadyExists] = useState(false);
+
+  const [registered, setRegistered] = useState(false);
 
   const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   const canSubmit  = emailValid && password.length >= 8;
@@ -55,12 +53,8 @@ export default function AccountScreen() {
           : null,
       };
       await authApi.register(email, password, profile);
-      const token = await authApi.login(email, password);
-      setToken(token);
-      const me = await authApi.getMe();
-      setProfile(me);
       onboarding.reset();
-      router.replace("/onboarding/final-welcome" as any);
+      setRegistered(true);
     } catch (e: any) {
       const detail = e?.response?.data?.detail;
       if (detail === "REGISTER_USER_ALREADY_EXISTS") {
@@ -72,6 +66,31 @@ export default function AccountScreen() {
     } finally {
       setLoading(false);
     }
+  }
+
+  if (registered) {
+    return (
+      <PaperBackground>
+        <SafeAreaView style={styles.safe}>
+          <View style={styles.confirmContent}>
+            <Ionicons name="mail-outline" size={56} color={colors.softPink} />
+            <Text style={styles.header}>Check your email</Text>
+            <Text style={styles.sub}>
+              We sent a verification link to{"\n"}
+              <Text style={styles.emailHighlight}>{email}</Text>
+            </Text>
+            <Text style={styles.hint}>
+              Click the link in the email to activate your account, then log in.
+            </Text>
+            <PillowButton
+              label="Go to login"
+              onPress={() => router.replace("/login" as any)}
+              variant="pink"
+            />
+          </View>
+        </SafeAreaView>
+      </PaperBackground>
+    );
   }
 
   return (
@@ -154,6 +173,15 @@ export default function AccountScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1 },
   kav: { flex: 1 },
+  confirmContent: {
+    flex: 1,
+    paddingHorizontal: spacing.xl,
+    paddingBottom: spacing.xl,
+    justifyContent: "center",
+    alignItems: "center",
+    gap: spacing.lg,
+  },
+  emailHighlight: { fontFamily: fonts.body700, color: colors.text },
   content: { flex: 1, paddingHorizontal: spacing.xl, paddingTop: spacing.lg, gap: spacing.xl },
   header: { fontFamily: fonts.heading700, fontSize: 42, color: colors.text, lineHeight: 46 },
   sub: { fontFamily: fonts.heading400, fontSize: 19, color: colors.textMuted, lineHeight: 27, marginTop: -spacing.md },

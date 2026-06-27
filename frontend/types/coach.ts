@@ -12,6 +12,20 @@ export interface CoachRecipe {
   fat_g?: number | null;
   time_minutes?: number | null;
   reason?: string | null;
+  recipe_id?: string | null;
+}
+
+export interface RecipeMetadata {
+  id: string;
+  title: string;
+  calories?: number | null;
+  protein_g?: number | null;
+  carbs_g?: number | null;
+  fat_g?: number | null;
+  fibre_g?: number | null;
+  diet_tags: string[];
+  cuisine_type?: string | null;
+  source_url?: string | null;
 }
 
 export interface CoachChatResponse {

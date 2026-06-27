@@ -33,6 +33,8 @@ export default function LoginScreen() {
   const setToken = useAuthStore((s) => s.setToken);
   const setProfile = useUserStore((s) => s.setProfile);
 
+  const clearAuth = useAuthStore((s) => s.clear);
+
   async function handleLogin() {
     setError("");
     setLoading(true);
@@ -40,6 +42,11 @@ export default function LoginScreen() {
       const token = await authApi.login(email, password);
       setToken(token);
       const me = await authApi.getMe();
+      if (!me.is_verified) {
+        clearAuth();
+        setError("Please verify your email before logging in.");
+        return;
+      }
       setProfile(me);
       router.replace("/(tabs)" as any);
     } catch {
@@ -110,7 +117,17 @@ export default function LoginScreen() {
               </View>
 
               {error ? (
-                <Text style={styles.errorText}>{error}</Text>
+                <View style={styles.errorBlock}>
+                  <Text style={styles.errorText}>{error}</Text>
+                  {error.includes("verify") && (
+                    <TouchableOpacity
+                      onPress={() => router.push(`/verify-email?email=${encodeURIComponent(email)}` as any)}
+                      accessibilityRole="button"
+                    >
+                      <Text style={styles.verifyLink}>Resend verification email</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
               ) : null}
             </View>
 
@@ -121,7 +138,11 @@ export default function LoginScreen() {
               variant="accent"
             />
 
-            <TouchableOpacity style={styles.forgot} accessibilityRole="button">
+            <TouchableOpacity
+              style={styles.forgot}
+              onPress={() => router.push("/reset-password" as any)}
+              accessibilityRole="button"
+            >
               <Text style={styles.forgotText}>Forgot password?</Text>
             </TouchableOpacity>
           </View>
@@ -167,11 +188,18 @@ const styles = StyleSheet.create({
   eyeBtn: {
     padding: spacing.sm,
   },
+  errorBlock: { alignItems: "center", gap: 6 },
   errorText: {
     fontFamily: fonts.body400,
     fontSize: 13,
     color: colors.error,
     textAlign: "center",
+  },
+  verifyLink: {
+    fontFamily: fonts.body700,
+    fontSize: 13,
+    color: colors.softPink,
+    textDecorationLine: "underline",
   },
   forgot: { alignItems: "center" },
   forgotText: {

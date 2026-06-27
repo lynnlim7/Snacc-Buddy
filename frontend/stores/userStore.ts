@@ -5,6 +5,7 @@ import { create } from "zustand";
 export interface UserProfile {
   id: string;
   email: string;
+  is_verified: boolean;
   name: string | null;
   gender: string | null;
   age: number | null;

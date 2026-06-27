@@ -21,10 +21,27 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import * as WebBrowser from "expo-web-browser";
+import * as SecureStore from "expo-secure-store";
 import { PaperBackground } from "../../components/PaperBackground";
 import { colors, fonts, radius, spacing } from "../../constants/theme";
 import { coachApi } from "../../services/api";
 import { CoachMessage, CoachRecipe } from "../../types/coach";
+
+const VIEWED_RECIPES_KEY = "viewed_recipe_ids";
+
+async function persistViewedRecipe(recipeId: string): Promise<void> {
+  try {
+    const raw = await SecureStore.getItemAsync(VIEWED_RECIPES_KEY);
+    const ids: string[] = raw ? JSON.parse(raw) : [];
+    if (!ids.includes(recipeId)) {
+      ids.unshift(recipeId);
+      await SecureStore.setItemAsync(VIEWED_RECIPES_KEY, JSON.stringify(ids.slice(0, 50)));
+    }
+  } catch {
+    // Non-critical
+  }
+}
 
 const COACH_AVATAR = require("../../assets/icon.png");
 
@@ -240,7 +257,30 @@ function TypingBubble() {
 
 /* ── Inline recipe card ── */
 function RecipeCardView({ recipe }: { recipe: CoachRecipe }) {
+  const [opening, setOpening] = useState(false);
   const minutes = recipe.time_minutes != null ? `${recipe.time_minutes} min` : null;
+
+  const handleViewRecipe = async () => {
+    if (opening) return;
+    if (!recipe.recipe_id) return;
+    setOpening(true);
+    try {
+      const meta = await coachApi.getRecipeMetadata(recipe.recipe_id);
+      if (meta.source_url) {
+        await persistViewedRecipe(recipe.recipe_id);
+        await WebBrowser.openBrowserAsync(meta.source_url, {
+          presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN,
+        });
+      }
+    } catch {
+      // Silently ignore — button stays tappable for retry
+    } finally {
+      setOpening(false);
+    }
+  };
+
+  const hasLink = Boolean(recipe.recipe_id);
+
   return (
     <View style={styles.recipeCard}>
       <View style={styles.recipeImage}>
@@ -275,9 +315,20 @@ function RecipeCardView({ recipe }: { recipe: CoachRecipe }) {
 
         {recipe.reason ? <Text style={styles.recipeReason}>{recipe.reason}</Text> : null}
 
-        <TouchableOpacity style={styles.viewRecipeButton} activeOpacity={0.8}>
-          <Text style={styles.viewRecipeText}>View Full Recipe →</Text>
-        </TouchableOpacity>
+        {hasLink && (
+          <TouchableOpacity
+            style={[styles.viewRecipeButton, opening && styles.viewRecipeButtonLoading]}
+            onPress={handleViewRecipe}
+            activeOpacity={0.8}
+            disabled={opening}
+          >
+            {opening ? (
+              <ActivityIndicator size="small" color={colors.primary} />
+            ) : (
+              <Text style={styles.viewRecipeText}>View Full Recipe →</Text>
+            )}
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   );
@@ -564,6 +615,9 @@ const styles = StyleSheet.create({
     alignItems:      "center",
     justifyContent:  "center",
     marginTop:       4,
+  },
+  viewRecipeButtonLoading: {
+    opacity: 0.6,
   },
   viewRecipeText: {
     fontFamily: fonts.body700,
