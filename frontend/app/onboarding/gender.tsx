@@ -14,7 +14,6 @@ import { colors, fonts, spacing, optionChip, optionChipText } from "../../consta
 const GENDERS = [
   { id: "male",       label: "Male"              },
   { id: "female",     label: "Female"            },
-  { id: "non_binary", label: "Non-binary"        },
   { id: "prefer_not", label: "Prefer not to say" },
 ];
 

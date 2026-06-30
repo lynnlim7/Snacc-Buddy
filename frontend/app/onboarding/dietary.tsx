@@ -12,14 +12,13 @@ import { useOnboardingStore } from "../../stores/onboardingStore";
 import { colors, fonts, spacing, optionChip, optionChipText } from "../../constants/theme";
 
 const DIETS = [
-  { id: "vegetarian", label: "Vegetarian"   },
-  { id: "vegan",      label: "Vegan"        },
-  { id: "halal",      label: "Halal"        },
-  { id: "kosher",     label: "Kosher"       },
-  { id: "gluten",     label: "Gluten-free"  },
-  { id: "dairy",      label: "Dairy-free"   },
-  { id: "nut",        label: "Nut allergy"  },
-  { id: "seafood",    label: "Seafood allergy"   },
+  { id: "vegetarian", label: "Vegetarian"      },
+  { id: "vegan",      label: "Vegan"           },
+  { id: "halal",      label: "Halal"           },
+  { id: "gluten",     label: "Gluten-free"     },
+  { id: "dairy",      label: "Dairy-free"      },
+  { id: "nut",        label: "Nut allergy"     },
+  { id: "seafood",    label: "Seafood allergy" },
 ];
 
 export default function DietaryScreen() {

@@ -46,8 +46,9 @@ export default function AccountScreen() {
         goal_weight_kg: onboarding.goalWeight ? parseFloat(onboarding.goalWeight) : null,
         goal: onboarding.goal || null,
         lifestyle: onboarding.lifestyle || null,
-        has_dietary_restrictions: onboarding.hasRestrictions,
-        has_conditions: onboarding.conditions.length > 0,
+        dietary_restrictions: onboarding.hasRestrictions ?? false,
+        dietary_types: onboarding.dietary.length > 0 ? onboarding.dietary : null,
+        medical_conditions: onboarding.conditions.length > 0,
         condition_type: onboarding.conditions.length > 0
           ? [...onboarding.conditions, onboarding.customCondition].filter(Boolean).join(",")
           : null,

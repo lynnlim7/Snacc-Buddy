@@ -12,12 +12,11 @@ import { useOnboardingStore } from "../../stores/onboardingStore";
 import { colors, fonts, spacing, optionChip, optionChipText } from "../../constants/theme";
 
 const LIFESTYLES = [
-  { id: "student",   label: "Student"              },
-  { id: "part_time", label: "Working part-time"    },
-  { id: "full_time", label: "Working full-time"    },
-  { id: "wfh",       label: "Working from home"    },
-  { id: "homemaker", label: "Stay-at-home parent"  },
-  { id: "retired",   label: "Retired"              },
+  { id: "student",   label: "Student"             },
+  { id: "part_time", label: "Working part-time"   },
+  { id: "full_time", label: "Working full-time"   },
+  { id: "homemaker", label: "Stay-at-home parent" },
+  { id: "retired",   label: "Retired"             },
 ];
 
 export default function LifestyleScreen() {

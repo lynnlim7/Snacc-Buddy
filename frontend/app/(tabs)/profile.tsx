@@ -28,24 +28,31 @@ import { colors, fonts, spacing, radius } from "../../constants/theme";
 // ─── Option maps ──────────────────────────────────────────────
 
 const GENDERS = [
-  { value: "male",              label: "Male" },
-  { value: "female",            label: "Female" },
-  { value: "non-binary",        label: "Non-binary" },
-  { value: "prefer_not_to_say", label: "Prefer not to say" },
+  { value: "male",       label: "Male" },
+  { value: "female",     label: "Female" },
+  { value: "prefer_not", label: "Prefer not to say" },
 ];
 const GOALS = [
-  { value: "lose_weight",   label: "Lose weight" },
-  { value: "lose_fat",      label: "Lose body fat" },
-  { value: "gain_muscle",   label: "Gain muscle" },
-  { value: "eat_healthier", label: "Eat healthier" },
+  { value: "lose_weight",   label: "Losing weight" },
+  { value: "gain_muscle",   label: "Gaining muscle" },
+  { value: "lose_fat",      label: "Losing fat, not weight" },
+  { value: "eat_healthier", label: "Eating healthier without losing weight" },
+];
+const DIET_TYPES = [
+  { value: "vegetarian", label: "Vegetarian" },
+  { value: "vegan",      label: "Vegan" },
+  { value: "halal",      label: "Halal" },
+  { value: "gluten",     label: "Gluten-free" },
+  { value: "dairy",      label: "Dairy-free" },
+  { value: "nut",        label: "Nut allergy" },
+  { value: "seafood",    label: "Seafood allergy" },
 ];
 const LIFESTYLES = [
-  { value: "wfh",       label: "Work from home" },
-  { value: "retired",   label: "Retired" },
-  { value: "full_time", label: "Full-time office" },
-  { value: "part_time", label: "Part-time work" },
   { value: "student",   label: "Student" },
-  { value: "homemaker", label: "Homemaker" },
+  { value: "part_time", label: "Working part-time" },
+  { value: "full_time", label: "Working full-time" },
+  { value: "homemaker", label: "Stay-at-home parent" },
+  { value: "retired",   label: "Retired" },
 ];
 
 // BMI category badge — wine brand colour across all categories (monochrome, per Figma)
@@ -102,16 +109,20 @@ export default function ProfileScreen() {
   const clearAuth  = useAuthStore((s) => s.clear);
   const clearUser  = useUserStore((s) => s.clear);
 
-  const [name,       setName]       = useState(profile?.name ?? "");
-  const [age,        setAge]        = useState(profile?.age != null ? String(profile.age) : "");
-  const [height,     setHeight]     = useState(profile?.height_cm != null ? String(profile.height_cm) : "");
-  const [weight,     setWeight]     = useState(profile?.current_weight_kg != null ? String(profile.current_weight_kg) : "");
-  const [goalWeight, setGoalWeight] = useState(profile?.goal_weight_kg != null ? String(profile.goal_weight_kg) : "");
-  const [gender,     setGender]     = useState<string | null>(profile?.gender ?? null);
-  const [goal,       setGoal]       = useState<string | null>(profile?.goal ?? null);
-  const [lifestyle,  setLifestyle]  = useState<string | null>(profile?.lifestyle ?? null);
-  const [saving,     setSaving]     = useState(false);
-  const [saved,      setSaved]      = useState(false);
+  const [name,               setName]               = useState(profile?.name ?? "");
+  const [age,                setAge]                = useState(profile?.age != null ? String(profile.age) : "");
+  const [height,             setHeight]             = useState(profile?.height_cm != null ? String(profile.height_cm) : "");
+  const [weight,             setWeight]             = useState(profile?.current_weight_kg != null ? String(profile.current_weight_kg) : "");
+  const [goalWeight,         setGoalWeight]         = useState(profile?.goal_weight_kg != null ? String(profile.goal_weight_kg) : "");
+  const [gender,             setGender]             = useState<string | null>(profile?.gender ?? null);
+  const [goal,               setGoal]               = useState<string | null>(profile?.goal ?? null);
+  const [lifestyle,          setLifestyle]          = useState<string | null>(profile?.lifestyle ?? null);
+  const [dietaryRestrictions, setDietaryRestrictions] = useState<boolean>(profile?.dietary_restrictions ?? false);
+  const [dietaryTypes,        setDietaryTypes]        = useState<string[]>(profile?.dietary_types ?? []);
+  const [medicalConditions,  setMedicalConditions]  = useState<boolean>(profile?.medical_conditions ?? false);
+  const [conditionType,      setConditionType]      = useState(profile?.condition_type ?? "");
+  const [saving,             setSaving]             = useState(false);
+  const [saved,              setSaved]              = useState(false);
 
   // Sync form if profile loads after mount
   useEffect(() => {
@@ -124,6 +135,10 @@ export default function ProfileScreen() {
     setGender(profile.gender);
     setGoal(profile.goal);
     setLifestyle(profile.lifestyle);
+    setDietaryRestrictions(profile.dietary_restrictions ?? false);
+    setDietaryTypes(profile.dietary_types ?? []);
+    setMedicalConditions(profile.medical_conditions ?? false);
+    setConditionType(profile.condition_type ?? "");
   }, [profile?.id]);
 
   const initial  = ((profile?.name?.trim()[0] ?? profile?.email?.[0] ?? "?")).toUpperCase();
@@ -143,14 +158,18 @@ export default function ProfileScreen() {
     setSaved(false);
     try {
       const updated = await authApi.updateProfile({
-        name:              name.trim() || null,
-        age:               age ? parseInt(age, 10) : null,
-        height_cm:         height ? parseFloat(height) : null,
-        current_weight_kg: weight ? parseFloat(weight) : null,
-        goal_weight_kg:    goalWeight ? parseFloat(goalWeight) : null,
+        name:                  name.trim() || null,
+        age:                   age ? parseInt(age, 10) : null,
+        height_cm:             height ? parseFloat(height) : null,
+        current_weight_kg:     weight ? parseFloat(weight) : null,
+        goal_weight_kg:        goalWeight ? parseFloat(goalWeight) : null,
         gender,
         goal,
         lifestyle,
+        dietary_restrictions:  dietaryRestrictions,
+        dietary_types:         dietaryRestrictions && dietaryTypes.length > 0 ? dietaryTypes : null,
+        medical_conditions:    medicalConditions,
+        condition_type:        medicalConditions && conditionType.trim() ? conditionType.trim() : null,
       });
       setProfile(updated);
       setSaved(true);
@@ -311,6 +330,70 @@ export default function ProfileScreen() {
                 <Chip key={l.value} label={l.label} selected={lifestyle === l.value} onPress={() => setLifestyle(l.value)} />
               ))}
             </View>
+          </View>
+
+          {/* ── Health & diet ── */}
+          <View style={styles.card}>
+            <Text style={styles.cardEyebrow}>HEALTH & DIET</Text>
+            <Text style={styles.cardTitle}>Restrictions & Conditions</Text>
+
+            <Text style={styles.subsectionLabel}>Dietary restrictions</Text>
+            <View style={styles.chipWrap}>
+              <Chip
+                label="None"
+                selected={!dietaryRestrictions}
+                onPress={() => setDietaryRestrictions(false)}
+              />
+              <Chip
+                label="Yes, I have restrictions"
+                selected={dietaryRestrictions}
+                onPress={() => setDietaryRestrictions(true)}
+              />
+            </View>
+
+            {dietaryRestrictions && (
+              <>
+                <Text style={styles.subsectionLabel}>Select all that apply</Text>
+                <View style={styles.chipWrap}>
+                  {DIET_TYPES.map((d) => (
+                    <Chip
+                      key={d.value}
+                      label={d.label}
+                      selected={dietaryTypes.includes(d.value)}
+                      onPress={() =>
+                        setDietaryTypes((prev) =>
+                          prev.includes(d.value)
+                            ? prev.filter((t) => t !== d.value)
+                            : [...prev, d.value]
+                        )
+                      }
+                    />
+                  ))}
+                </View>
+              </>
+            )}
+
+            <Text style={styles.subsectionLabel}>Medical conditions</Text>
+            <View style={styles.chipWrap}>
+              <Chip
+                label="None"
+                selected={!medicalConditions}
+                onPress={() => setMedicalConditions(false)}
+              />
+              <Chip
+                label="Yes, I have conditions"
+                selected={medicalConditions}
+                onPress={() => setMedicalConditions(true)}
+              />
+            </View>
+
+            {medicalConditions && (
+              <Field
+                label="Condition details (e.g. diabetes, hypertension)"
+                value={conditionType}
+                onChangeText={setConditionType}
+              />
+            )}
           </View>
 
           {/* ── Save button ── */}

@@ -3,6 +3,7 @@ from enum import Enum
 
 from fastapi_users.db import SQLAlchemyBaseUserTableUUID
 from sqlalchemy import Boolean, DateTime, Float, Integer, String, Text
+from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func 
 
@@ -18,6 +19,7 @@ class User(SQLAlchemyBaseUserTableUUID, Base):
     goal: Mapped[str | None] = mapped_column(String(50), nullable=True)
     lifestyle: Mapped[str | None] = mapped_column(String(50), nullable=True)
     dietary_restrictions: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    dietary_types: Mapped[list[str] | None] = mapped_column(ARRAY(Text), nullable=True)
     medical_conditions: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     condition_type: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(

@@ -17,12 +17,11 @@ import { colors, fonts, spacing, optionChip, optionChipText, inputStyle } from "
 const CONDITIONS = [
   { id: "hypertension", label: "Hypertension (high blood pressure)" },
   { id: "diabetes",     label: "Diabetes"                           },
-  { id: "pcos",         label: "PCOS"                              },
-  { id: "thyroid",      label: "Thyroid condition"                 },
-  { id: "ibs",          label: "IBS or digestive issues"          },
-  { id: "cholesterol",  label: "High cholesterol"                  },
-  { id: "none",         label: "None of these"                     },
-  { id: "other",        label: "Other"                             },
+  { id: "pcos",         label: "PCOS"                               },
+  { id: "thyroid",      label: "Thyroid condition"                  },
+  { id: "ibs",          label: "IBS or digestive issues"            },
+  { id: "cholesterol",  label: "High cholesterol"                   },
+  { id: "other",        label: "Other"                              },
 ];
 
 export default function HealthScreen() {
@@ -30,24 +29,14 @@ export default function HealthScreen() {
   const { conditions, customCondition, set } = useOnboardingStore();
 
   function toggle(id: string) {
-    let next: string[];
-    if (id === "none") {
-      // "None" clears all others
-      next = conditions.includes("none") ? [] : ["none"];
-    } else {
-      // Selecting a real condition removes "none"
-      const without = conditions.filter((c) => c !== "none");
-      next = without.includes(id)
-        ? without.filter((c) => c !== id)
-        : [...without, id];
-    }
+    const next = conditions.includes(id)
+      ? conditions.filter((c) => c !== id)
+      : [...conditions, id];
     set({ conditions: next });
   }
 
   const showOtherInput = conditions.includes("other");
-  const canContinue =
-    conditions.length > 0 &&
-    (!showOtherInput || customCondition.trim().length > 0);
+  const canContinue = !showOtherInput || customCondition.trim().length > 0;
 
   return (
     <PaperBackground>

@@ -1,5 +1,5 @@
 import uuid
-from typing import Optional
+from typing import List, Optional
 
 from fastapi_users import schemas
 
@@ -14,6 +14,7 @@ class UserRead(schemas.BaseUser[uuid.UUID]):
     goal: Optional[str] = None
     lifestyle: Optional[str] = None
     dietary_restrictions: Optional[bool] = None
+    dietary_types: Optional[List[str]] = None
     medical_conditions: Optional[bool] = None
     condition_type: Optional[str] = None
 
@@ -28,6 +29,7 @@ class UserCreate(schemas.BaseUserCreate):
     goal: Optional[str] = None
     lifestyle: Optional[str] = None
     dietary_restrictions: Optional[bool] = None
+    dietary_types: Optional[List[str]] = None
     medical_conditions: Optional[bool] = None
     condition_type: Optional[str] = None
 
@@ -42,5 +44,6 @@ class UserUpdate(schemas.BaseUserUpdate):
     goal: Optional[str] = None
     lifestyle: Optional[str] = None
     dietary_restrictions: Optional[bool] = None
+    dietary_types: Optional[List[str]] = None
     medical_conditions: Optional[bool] = None
     condition_type: Optional[str] = None

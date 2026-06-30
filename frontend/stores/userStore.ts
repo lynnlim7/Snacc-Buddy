@@ -14,8 +14,9 @@ export interface UserProfile {
   goal_weight_kg: number | null;
   goal: string | null;
   lifestyle: string | null;
-  has_dietary_restrictions: boolean | null;
-  has_conditions: boolean | null;
+  dietary_restrictions: boolean | null;
+  dietary_types: string[] | null;
+  medical_conditions: boolean | null;
   condition_type: string | null;
 }
 

@@ -1,11 +1,10 @@
 from dataclasses import dataclass
 
 _ACTIVITY_MULTIPLIER: dict[str, float] = {
-    "wfh": 1.2,
-    "retired": 1.2,
+    "retired":   1.2,
     "full_time": 1.375,
     "part_time": 1.375,
-    "student": 1.55,
+    "student":   1.55,
     "homemaker": 1.55,
 }
 

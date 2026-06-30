@@ -69,7 +69,7 @@ export function computeNutritionTargets(profile: UserProfile | null): NutritionT
 
   // Activity-adjusted TDEE
   const activityMultiplier: Record<string, number> = {
-    wfh: 1.2, retired: 1.2, full_time: 1.375, part_time: 1.375,
+    retired: 1.2, full_time: 1.375, part_time: 1.375,
     student: 1.55, homemaker: 1.55,
   };
   const tdee = bmr * (activityMultiplier[lifestyle ?? ""] ?? 1.375);

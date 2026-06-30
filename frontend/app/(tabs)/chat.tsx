@@ -258,20 +258,29 @@ function TypingBubble() {
 /* ── Inline recipe card ── */
 function RecipeCardView({ recipe }: { recipe: CoachRecipe }) {
   const [opening, setOpening] = useState(false);
-  const minutes = recipe.time_minutes != null ? `${recipe.time_minutes} min` : null;
 
   const handleViewRecipe = async () => {
     if (opening) return;
-    if (!recipe.recipe_id) return;
     setOpening(true);
     try {
-      const meta = await coachApi.getRecipeMetadata(recipe.recipe_id);
-      if (meta.source_url) {
-        await persistViewedRecipe(recipe.recipe_id);
-        await WebBrowser.openBrowserAsync(meta.source_url, {
-          presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN,
-        });
+      let url: string | null = null;
+
+      if (recipe.recipe_id) {
+        const meta = await coachApi.getRecipeMetadata(recipe.recipe_id);
+        if (meta.source_url) {
+          url = meta.source_url;
+          await persistViewedRecipe(recipe.recipe_id);
+        }
       }
+
+      // Fall back to a search when no DB record or source_url is absent.
+      if (!url) {
+        url = `https://www.google.com/search?q=${encodeURIComponent(recipe.title + " recipe")}`;
+      }
+
+      await WebBrowser.openBrowserAsync(url, {
+        presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN,
+      });
     } catch {
       // Silently ignore — button stays tappable for retry
     } finally {
@@ -279,20 +288,8 @@ function RecipeCardView({ recipe }: { recipe: CoachRecipe }) {
     }
   };
 
-  const hasLink = Boolean(recipe.recipe_id);
-
   return (
     <View style={styles.recipeCard}>
-      <View style={styles.recipeImage}>
-        <Ionicons name="restaurant" size={32} color={colors.primaryBorder} />
-        {minutes ? (
-          <View style={styles.timeBadge}>
-            <Ionicons name="time-outline" size={12} color={colors.white} />
-            <Text style={styles.timeBadgeText}>{minutes}</Text>
-          </View>
-        ) : null}
-      </View>
-
       <View style={styles.recipeBody}>
         <Text style={styles.recipeTitle}>{recipe.title}</Text>
 
@@ -315,20 +312,18 @@ function RecipeCardView({ recipe }: { recipe: CoachRecipe }) {
 
         {recipe.reason ? <Text style={styles.recipeReason}>{recipe.reason}</Text> : null}
 
-        {hasLink && (
-          <TouchableOpacity
-            style={[styles.viewRecipeButton, opening && styles.viewRecipeButtonLoading]}
-            onPress={handleViewRecipe}
-            activeOpacity={0.8}
-            disabled={opening}
-          >
-            {opening ? (
-              <ActivityIndicator size="small" color={colors.primary} />
-            ) : (
-              <Text style={styles.viewRecipeText}>View Full Recipe →</Text>
-            )}
-          </TouchableOpacity>
-        )}
+        <TouchableOpacity
+          style={[styles.viewRecipeButton, opening && styles.viewRecipeButtonLoading]}
+          onPress={handleViewRecipe}
+          activeOpacity={0.8}
+          disabled={opening}
+        >
+          {opening ? (
+            <ActivityIndicator size="small" color={colors.primary} />
+          ) : (
+            <Text style={styles.viewRecipeText}>View Full Recipe →</Text>
+          )}
+        </TouchableOpacity>
       </View>
     </View>
   );
