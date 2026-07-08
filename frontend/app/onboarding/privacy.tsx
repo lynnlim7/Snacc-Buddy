@@ -4,7 +4,7 @@
  */
 import React from "react";
 import {
-  View, Text, StyleSheet, TouchableOpacity, Linking, ScrollView,
+  View, Text, StyleSheet, TouchableOpacity, ScrollView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -12,11 +12,12 @@ import { Ionicons } from "@expo/vector-icons";
 import { PaperBackground } from "../../components/PaperBackground";
 import { PillowButton } from "../../components/PillowButton";
 import { OnboardingHeader } from "../../components/OnboardingHeader";
+import { PDFViewerModal } from "../../components/PDFViewerModal";
 import { useOnboardingStore } from "../../stores/onboardingStore";
 import { colors, fonts, spacing, journalCard } from "../../constants/theme";
 
-const TERMS_URL   = "https://snaccbuddy.app/terms";
-const PRIVACY_URL = "https://snaccbuddy.app/privacy";
+const TERMS_ASSET   = require("../../assets/Terms_and_Conditions.pdf");
+const PRIVACY_ASSET = require("../../assets/Privacy_Policy.pdf");
 
 const PROMISES = [
   "Your diary entries are only visible to you",
@@ -24,20 +25,22 @@ const PROMISES = [
   "Your information stays between you and Snacc Buddy",
 ];
 
-// Reuse the accepted flag from store — add it to OnboardingData if needed,
-// or keep it local since it's purely a UI gate
 export default function PrivacyScreen() {
   const router = useRouter();
   const [accepted, setAccepted] = React.useState(false);
-
-  function openLink(url: string) {
-    Linking.openURL(url).catch(() => {});
-  }
+  const [pdfModal, setPdfModal] = React.useState<{ title: string; asset: number } | null>(null);
 
   return (
     <PaperBackground>
       <SafeAreaView style={styles.safe}>
         <OnboardingHeader step={12} total={16} />
+
+        <PDFViewerModal
+          visible={pdfModal !== null}
+          title={pdfModal?.title ?? ""}
+          asset={pdfModal?.asset ?? TERMS_ASSET}
+          onClose={() => setPdfModal(null)}
+        />
 
         <ScrollView style={styles.scroll} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           <Text style={styles.header}>Your diary stays personal</Text>
@@ -57,7 +60,7 @@ export default function PrivacyScreen() {
             {/* Inline doc links — two small grey links side by side */}
             <View style={styles.docRow}>
               <TouchableOpacity
-                onPress={() => openLink(TERMS_URL)}
+                onPress={() => setPdfModal({ title: "Terms and Conditions", asset: TERMS_ASSET })}
                 accessibilityRole="link"
                 accessibilityLabel="Terms and Conditions"
                 hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
@@ -66,7 +69,7 @@ export default function PrivacyScreen() {
               </TouchableOpacity>
               <Text style={styles.docSep}>·</Text>
               <TouchableOpacity
-                onPress={() => openLink(PRIVACY_URL)}
+                onPress={() => setPdfModal({ title: "Privacy Policy", asset: PRIVACY_ASSET })}
                 accessibilityRole="link"
                 accessibilityLabel="Privacy Policy"
                 hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}

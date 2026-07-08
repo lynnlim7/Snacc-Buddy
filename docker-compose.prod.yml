@@ -1,0 +1,51 @@
+# Production overrides — use together with the base file:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+#
+# Before first deploy:
+#   1. Set DNS A records: snaccbuddy.site, www.snaccbuddy.site, api.snaccbuddy.site → server IP
+#   2. Copy backend/.env.example → backend/.env and fill in all values
+#   3. Open firewall ports 80 and 443 only (block 8000 and 8081 externally)
+
+services:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.prod
+      args:
+        EXPO_PUBLIC_API_URL: https://api.snaccbuddy.site
+    # No published ports — Caddy reaches this via the internal Docker network
+    ports: []
+
+  api:
+    environment:
+      ENV: production
+      CORS_ORIGINS: '["https://snaccbuddy.site","https://www.snaccbuddy.site"]'
+    # No published ports — Caddy reaches this via the internal Docker network
+    ports: []
+
+  db:
+    # No published ports in production
+    ports: []
+
+  redis:
+    # No published ports in production
+    ports: []
+
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+      - frontend
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:

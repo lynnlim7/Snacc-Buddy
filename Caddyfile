@@ -1,0 +1,11 @@
+# Caddy automatically provisions and renews HTTPS certificates via Let's Encrypt.
+# Prerequisite: DNS A records for snaccbuddy.site, www.snaccbuddy.site, and
+# api.snaccbuddy.site must all point to this server's public IP before deploying.
+
+snaccbuddy.site, www.snaccbuddy.site {
+    reverse_proxy frontend:80
+}
+
+api.snaccbuddy.site {
+    reverse_proxy api:8000
+}
