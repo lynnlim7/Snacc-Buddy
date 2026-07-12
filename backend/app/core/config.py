@@ -36,14 +36,17 @@ class Settings(BaseSettings):
     FRONTEND_RESET_PASSWORD_URL: str = "http://localhost:8081/reset-password"
     FRONTEND_VERIFY_EMAIL_URL: str = "http://localhost:8081/verify-email"
 
-    MAIL_USERNAME: str
-    MAIL_PASSWORD: str
-    MAIL_FROM: EmailStr
-    MAIL_PORT: int = 587
-    MAIL_SERVER: str
+    MAIL_FROM: EmailStr = "noreply@snaccbuddy.site"
     MAIL_FROM_NAME: str = "Snacc Buddy"
-    MAIL_STARTTLS: bool = True
-    MAIL_SSL_TLS: bool = False
+    RESEND_API_KEY: str = ""
+
+    # Legacy SMTP fields — kept so existing .env files don't break
+    MAIL_USERNAME: str = ""
+    MAIL_PASSWORD: str = ""
+    MAIL_PORT: int = 465
+    MAIL_SERVER: str = "smtp.resend.com"
+    MAIL_STARTTLS: bool = False
+    MAIL_SSL_TLS: bool = True
 
     CLOUDFLARE_R2_ACCOUNT_ID: str = ""
     CLOUDFLARE_R2_ACCESS_KEY_ID: str = ""

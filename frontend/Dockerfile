@@ -1,17 +1,18 @@
-FROM node:20-alpine
-
+# Stage 1 — build Expo web export
+FROM node:20-alpine AS builder
 WORKDIR /app
-
 COPY package.json package-lock.json* ./
-RUN npm install
-
+RUN npm ci
 COPY . .
 
-EXPOSE 8081
+ARG EXPO_PUBLIC_API_URL=https://api.snaccbuddy.site
+ENV EXPO_PUBLIC_API_URL=$EXPO_PUBLIC_API_URL
+ENV EXPO_PUBLIC_PLATFORM_MODE=web
 
-# Metro advertises this IP in the QR code / connection URL so the device can reach it.
-# Override at runtime: REACT_NATIVE_PACKAGER_HOSTNAME=<your-lan-ip>
-ENV REACT_NATIVE_PACKAGER_HOSTNAME=192.168.1.12
-ENV EXPO_PUBLIC_API_URL=http://192.168.1.12:8000
+RUN npx expo export --platform web
 
-CMD ["npx", "expo", "start", "--host", "lan"]
+# Stage 2 — serve static files
+FROM nginx:stable-alpine
+COPY --from=builder /app/dist /usr/share/nginx/html
+COPY nginx-spa.conf /etc/nginx/conf.d/default.conf
+EXPOSE 80

@@ -3,12 +3,14 @@ import { Modal, View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } fr
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { Asset } from "expo-asset";
+import WebView from "react-native-webview";
 import { colors, fonts, spacing } from "../constants/theme";
 
 interface Props {
   visible: boolean;
   title: string;
   asset: number;
+  webPath: string;
   onClose: () => void;
 }
 
@@ -34,10 +36,14 @@ export function PDFViewerModal({ visible, title, asset, onClose }: Props) {
         </View>
 
         {uri ? (
-          <View style={styles.frame}>
-            {/* @ts-ignore — iframe is valid on Expo Web */}
-            <iframe src={uri} style={{ flex: 1, width: "100%", height: "100%", border: "none" }} title={title} />
-          </View>
+          <WebView
+            source={{ uri }}
+            style={styles.webview}
+            originWhitelist={["*"]}
+            allowFileAccess
+            allowFileAccessFromFileURLs
+            allowUniversalAccessFromFileURLs
+          />
         ) : (
           <View style={styles.loading}>
             <ActivityIndicator size="large" color={colors.softPink} />
@@ -60,6 +66,6 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
   },
   title: { fontFamily: fonts.body700, fontSize: 16, color: colors.text, flex: 1, marginRight: spacing.md },
-  frame: { flex: 1 },
+  webview: { flex: 1 },
   loading: { flex: 1, alignItems: "center", justifyContent: "center" },
 });

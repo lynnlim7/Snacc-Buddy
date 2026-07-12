@@ -58,13 +58,29 @@ export const authApi = {
   },
 };
 
+async function resizeWebBlob(blob: Blob, maxPx = 1920): Promise<Blob> {
+  const img = new Image();
+  const url = URL.createObjectURL(blob);
+  await new Promise<void>((resolve) => { img.onload = () => resolve(); img.src = url; });
+  const scale = Math.min(1, maxPx / Math.max(img.width, img.height));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.round(img.width * scale);
+  canvas.height = Math.round(img.height * scale);
+  canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
+  URL.revokeObjectURL(url);
+  return new Promise<Blob>((resolve) =>
+    canvas.toBlob((b) => resolve(b!), "image/jpeg", 0.8)
+  );
+}
+
 export const foodApi = {
   analyzeImage: async (imageUri: string): Promise<AnalyzeResponse> => {
     const form = new FormData();
 
     if (config.platformMode === "web") {
       const res = await fetch(imageUri);
-      const blob = await res.blob();
+      const raw = await res.blob();
+      const blob = await resizeWebBlob(raw);
       form.append("image", blob, "food.jpg");
     } else {
       form.append("image", {

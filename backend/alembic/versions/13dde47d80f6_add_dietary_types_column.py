@@ -18,7 +18,8 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.add_column('users', sa.Column('dietary_types', postgresql.ARRAY(sa.Text()), nullable=True))
+    # IF NOT EXISTS guards against re-running when a prior crashed deploy already applied this
+    op.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS dietary_types TEXT[]")
 
 
 def downgrade() -> None:

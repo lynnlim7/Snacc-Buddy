@@ -13,6 +13,7 @@ import {
   KeyboardAvoidingView, Platform,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
+import * as ImageManipulator from "expo-image-manipulator";
 import { Ionicons } from "@expo/vector-icons";
 import {
   colors, fonts, spacing, radius,
@@ -40,6 +41,17 @@ type Step = "type" | "analyzing" | "results" | "chat";
 const MEAL_TYPES: MealType[] = [
   "Breakfast", "Lunch", "Dinner", "Snack", "Dessert", "Supper",
 ];
+
+// ─── Image helpers ────────────────────────────────────────────
+
+async function compressForUpload(uri: string): Promise<string> {
+  const result = await ImageManipulator.manipulateAsync(
+    uri,
+    [{ resize: { width: 1920 } }],
+    { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
+  );
+  return result.uri;
+}
 
 // ─── AI helpers ───────────────────────────────────────────────
 
@@ -127,7 +139,7 @@ export function MealLogModal({ visible, onClose, onSave, prefillType }: Props) {
         ? await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ImagePicker.MediaTypeOptions.Images,
             allowsEditing: true,
-            quality: 0.5,  // library photos can be very large; compress harder
+            quality: 0.8,
           })
         : await ImagePicker.launchCameraAsync({
             allowsEditing: true,
@@ -135,11 +147,12 @@ export function MealLogModal({ visible, onClose, onSave, prefillType }: Props) {
           });
 
     if (result.canceled) return;
-    const uri = result.assets[0].uri;
-    setImageUri(uri);
+    const rawUri = result.assets[0].uri;
     setStep("analyzing");
 
     try {
+      const uri = await compressForUpload(rawUri);
+      setImageUri(uri);
       const analysis = await analyseImage(uri);
       setInferenceLogId(analysis.inferenceLogId);
       setR2ImageUrl(analysis.imageUrl);

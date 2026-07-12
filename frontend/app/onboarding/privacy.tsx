@@ -28,7 +28,7 @@ const PROMISES = [
 export default function PrivacyScreen() {
   const router = useRouter();
   const [accepted, setAccepted] = React.useState(false);
-  const [pdfModal, setPdfModal] = React.useState<{ title: string; asset: number } | null>(null);
+  const [pdfModal, setPdfModal] = React.useState<{ title: string; asset: number; webPath: string } | null>(null);
 
   return (
     <PaperBackground>
@@ -39,6 +39,7 @@ export default function PrivacyScreen() {
           visible={pdfModal !== null}
           title={pdfModal?.title ?? ""}
           asset={pdfModal?.asset ?? TERMS_ASSET}
+          webPath={pdfModal?.webPath ?? "/Terms_and_Conditions.pdf"}
           onClose={() => setPdfModal(null)}
         />
 
@@ -60,7 +61,7 @@ export default function PrivacyScreen() {
             {/* Inline doc links — two small grey links side by side */}
             <View style={styles.docRow}>
               <TouchableOpacity
-                onPress={() => setPdfModal({ title: "Terms and Conditions", asset: TERMS_ASSET })}
+                onPress={() => setPdfModal({ title: "Terms and Conditions", asset: TERMS_ASSET, webPath: "/Terms_and_Conditions.pdf" })}
                 accessibilityRole="link"
                 accessibilityLabel="Terms and Conditions"
                 hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
@@ -69,7 +70,7 @@ export default function PrivacyScreen() {
               </TouchableOpacity>
               <Text style={styles.docSep}>·</Text>
               <TouchableOpacity
-                onPress={() => setPdfModal({ title: "Privacy Policy", asset: PRIVACY_ASSET })}
+                onPress={() => setPdfModal({ title: "Privacy Policy", asset: PRIVACY_ASSET, webPath: "/Privacy_Policy.pdf" })}
                 accessibilityRole="link"
                 accessibilityLabel="Privacy Policy"
                 hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
